@@ -20,7 +20,7 @@ const fadeUp = {
 export default function Landing() {
   const [ledger, setLedger] = useState<Ledger | null>(null);
   useEffect(() => {
-    fetch("/api/ledger").then((r) => r.ok && r.json().then(setLedger)).catch(() => {});
+    fetch("/api/ledger").then((r) => { if (r.ok) r.json().then(setLedger); }).catch(() => {});
   }, []);
 
   const hasPayouts = ledger && ledger.recent.length > 0;
