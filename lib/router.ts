@@ -8,8 +8,8 @@
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 import { GatewayClient } from "@circle-fin/x402-batching/client";
-import { embed, type Candidate, type Judged, type Scored } from "./agent-loop.ts";
-import { quoteFor, routerDecides, domainSupply } from "./pricing.ts";
+import { embed, type Candidate, type Judged, type Scored } from "./agent-loop";
+import { quoteFor, routerDecides, domainSupply } from "./pricing";
 
 const openai = new OpenAI({
   baseURL: process.env.LLM_BASE_URL ?? "http://127.0.0.1:11434/v1",

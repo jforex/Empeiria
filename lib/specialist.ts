@@ -4,7 +4,7 @@
  */
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
-import { embed, type Candidate, type Judged } from "./agent-loop.ts";
+import { embed, type Candidate, type Judged } from "./agent-loop";
 
 const openai = new OpenAI({
   baseURL: process.env.LLM_BASE_URL ?? "http://127.0.0.1:11434/v1",

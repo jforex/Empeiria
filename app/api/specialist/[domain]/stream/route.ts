@@ -4,7 +4,7 @@
  * The specialist does AND shows its own work.
  */
 import { NextRequest } from "next/server";
-import { specialistRetrieve, judgeOne } from "@/lib/specialist.ts";
+import { specialistRetrieve, judgeOne } from "@/lib/specialist";
 
 function sse(data: unknown): string {
   return `data: ${JSON.stringify(data)}\n\n`;

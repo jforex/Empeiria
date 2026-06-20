@@ -5,7 +5,7 @@
  */
 import { GatewayClient } from "@circle-fin/x402-batching/client";
 import { createClient } from "@supabase/supabase-js";
-import type { Scored } from "./agent-loop.ts";
+import type { Scored } from "./agent-loop";
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

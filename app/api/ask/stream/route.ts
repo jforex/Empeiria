@@ -7,8 +7,8 @@ import { NextRequest } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 import { GatewayClient } from "@circle-fin/x402-batching/client";
-import { type Judged, type Scored } from "@/lib/agent-loop.ts";
-import { quoteFor, routerDecides, domainSupply } from "@/lib/pricing.ts";
+import { type Judged, type Scored } from "@/lib/agent-loop";
+import { quoteFor, routerDecides, domainSupply } from "@/lib/pricing";
 
 const openai = new OpenAI({
   baseURL: process.env.LLM_BASE_URL ?? "http://127.0.0.1:11434/v1",
