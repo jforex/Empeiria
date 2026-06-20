@@ -50,6 +50,7 @@ export default function Ask() {
         case "synthesizing": setActive("synthesize"); push({ kind: "write", text: "Synthesizing the answer…" }); break;
         case "answer": break;
         case "payout": setActive("pay"); push({ kind: "pay", text: `Paid contributor`, sub: `"${evt.title}" · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
+        case "con_cut": push({ kind: "pay", text: `${evt.label} (agent) took its commission`, sub: `${Math.round(evt.rate * 100)}% · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
         case "done": setDone(evt); setActive(null); setRunning(false); es.close(); break;
         case "error": setError(evt.message); setRunning(false); es.close(); break;
       }

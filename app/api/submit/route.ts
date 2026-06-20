@@ -43,10 +43,19 @@ export async function POST(req: NextRequest) {
     const claimKey = makeClaimKey();
     const handle = `anon-${address.slice(2, 8).toLowerCase()}`;
 
+    // assign a Con (representative agent) at random
+    const { data: cons } = await db.from("cons").select("id, label, fee_rate");
+    const con = cons && cons.length ? cons[Math.floor(Math.random() * cons.length)] : null;
+
     const { data: contributor, error: cErr } = await db.from("contributors").insert({
       handle, wallet_address: address, wallet_private_key: pk, claim_key: claimKey,
+      con_id: con?.id ?? null,
     }).select().single();
     if (cErr) throw cErr;
+
+    if (con) {
+      await db.rpc("increment_con_contributors", { con_id_in: con.id }).then(() => {}, () => {});
+    }
 
     // 3. embed + store the experience
     const embedding = await embed(`${verdict.suggestedTitle}\n${body}`);
@@ -62,13 +71,14 @@ export async function POST(req: NextRequest) {
     });
     if (eErr) throw eErr;
 
-    return NextResponse.json({
+  return NextResponse.json({
       accepted: true,
       claimKey,
       domain: verdict.domain,
       quality: verdict.quality,
       title: verdict.suggestedTitle,
       reason: verdict.reason,
+      con: con ? { label: con.label, feeRate: con.fee_rate } : null,
     });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

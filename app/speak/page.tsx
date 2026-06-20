@@ -97,7 +97,7 @@ export default function Speak() {
                       <div className="claim">
                         <div className="claim-label">your private claim key — save it to check your earnings</div>
                         <div className="claim-key">{result.claimKey}</div>
-                        <div className="claim-note">No account, no name. This key is the only way to track what your experience earns.</div>
+                        <div className="claim-note">No account, no name. This key is the only way to track what your experience earns. <a href="/earnings" style={{ color: "var(--gold)", fontWeight: 600 }}>Check earnings →</a></div>
                       </div>
                       <button className="btn btn-ghost" onClick={reset}>Share another →</button>
                     </div>

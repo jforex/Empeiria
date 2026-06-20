@@ -172,18 +172,42 @@ export async function GET(req: NextRequest) {
         // 6. pay contributors (real tx each)
         const g = getGateway();
         const paid: Array<{ title: string; amount: number; contribution: number; tx: string | null }> = [];
-        for (const s of scored) {
-          const { data: contrib } = await db.from("contributors").select("wallet_address").eq("id", s.contributor_id).single();
+       for (const s of scored) {
+          const { data: contrib } = await db.from("contributors")
+            .select("wallet_address, con_id").eq("id", s.contributor_id).single();
+
+          // does this contributor have a Con (representative agent)? split the payout.
+          let con: { id: string; label: string; fee_rate: number; wallet_address: string } | null = null;
+          if (contrib?.con_id) {
+            const { data: c } = await db.from("cons")
+              .select("id, label, fee_rate, wallet_address").eq("id", contrib.con_id).single();
+            con = c ?? null;
+          }
+          const conCut = con ? Number((s.amount_usdc * con.fee_rate).toFixed(6)) : 0;
+          const contributorNet = Number((s.amount_usdc - conCut).toFixed(6));
+
           let tx: string | null = null;
           try {
-            const payUrl = `${BASE_URL}/api/pay-contributor?payTo=${contrib!.wallet_address}&amount=${s.amount_usdc.toFixed(6)}`;
+            // pay the contributor their net share
+            const payUrl = `${BASE_URL}/api/pay-contributor?payTo=${contrib!.wallet_address}&amount=${contributorNet.toFixed(6)}`;
             const pr = await g.pay(payUrl, { method: "GET" });
             tx = (pr as { transaction?: string }).transaction ?? (pr as { data?: { transaction?: string } }).data?.transaction ?? null;
-            await db.from("payouts").insert({ query_id: q.id, experience_id: s.id, contributor_id: s.contributor_id, relevance: s.relevance, contribution: s.contribution, weight: s.weight, amount_usdc: s.amount_usdc, reason: s.reason, gateway_tx: tx });
-            await db.rpc("increment_contributor_earnings", { cid: s.contributor_id, amount: s.amount_usdc }).then(() => {}, () => {});
+            await db.from("payouts").insert({ query_id: q.id, experience_id: s.id, contributor_id: s.contributor_id, relevance: s.relevance, contribution: s.contribution, weight: s.weight, amount_usdc: contributorNet, reason: s.reason, gateway_tx: tx });
+            await db.rpc("increment_contributor_earnings", { cid: s.contributor_id, amount: contributorNet }).then(() => {}, () => {});
           } catch { /* mark failed below */ }
-          paid.push({ title: s.title, amount: s.amount_usdc, contribution: s.contribution, tx });
-          send({ type: "payout", title: s.title, amount: s.amount_usdc, contribution: s.contribution, tx });
+          paid.push({ title: s.title, amount: contributorNet, contribution: s.contribution, tx });
+          send({ type: "payout", title: s.title, amount: contributorNet, contribution: s.contribution, tx });
+
+          // pay the Con its commission (agent-to-agent, real)
+          if (con && conCut > 0) {
+            try {
+              const conUrl = `${BASE_URL}/api/pay-contributor?payTo=${con.wallet_address}&amount=${conCut.toFixed(6)}`;
+              const cpr = await g.pay(conUrl, { method: "GET" });
+              const conTx = (cpr as { transaction?: string }).transaction ?? (cpr as { data?: { transaction?: string } }).data?.transaction ?? null;
+              await db.rpc("increment_con_earnings", { con_id_in: con.id, amount: conCut }).then(() => {}, () => {});
+              send({ type: "con_cut", label: con.label, amount: conCut, rate: con.fee_rate, tx: conTx });
+            } catch { /* con cut failed, non-fatal */ }
+          }
         }
 
         const contribSpent = scored.reduce((sum, x) => sum + x.amount_usdc, 0);
