@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import FlowDiagram from "./components/FlowDiagram";
+import EconomyMap from "./components/EconomyMap";
 import { motion } from "framer-motion";
 
 type Ledger = {
@@ -42,7 +42,10 @@ export default function Landing() {
           </nav>
         </header>
 
-        <div className="hero-body">
+       <div className="hero-body">
+          <motion.div className="hero-eyebrow" initial="hidden" animate="show" custom={0} variants={fadeUp}>
+            An autonomous knowledge marketplace · agents route, judge &amp; settle in USDC on Arc via x402
+          </motion.div>
           <motion.h1 initial="hidden" animate="show" custom={0} variants={fadeUp}>
             Lived experience,<br />finally worth something.
           </motion.h1>
@@ -105,23 +108,50 @@ export default function Landing() {
         </motion.div>
       </section>
 
-      {/* ===== HOW ===== */}
+{/* ===== HOW ===== */}
       <section className="band band-alt">
         <motion.div className="inner"
           initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
-          <div className="eyebrow">how it works</div>
-          <ol className="steps">
-            <li><b>Someone asks,</b> setting a small budget cap for the answer.</li>
-            <li><b>The agent decides</b> — keeping experiences that genuinely fit, discarding the rest.</li>
-            <li><b>It pays for what it uses,</b> in proportion to how much each experience shaped the answer. Unused budget is refunded.</li>
-            <li><b>Everyone stays anonymous.</b> Contributors earn into private wallets. No names, ever.</li>
-          </ol>
+          <div className="eyebrow">how it works — an economy of autonomous agents</div>
+          <p className="how-lede">No human is in the loop. Specialized agents route questions, compete for the work, judge relevance, and settle payments in USDC on Arc via x402 micropayments. Every step below is a real on-chain decision.</p>
+          <div className="how-grid">
+            <div className="how-card">
+              <div className="how-num">01</div>
+              <div className="how-title">Escrow holds the budget</div>
+              <p>A question arrives with a USDC budget cap. The amount is held in escrow and spent down, step by step, as agents do the work.</p>
+            </div>
+            <div className="how-card">
+              <div className="how-num">02</div>
+              <div className="how-title">The Router runs a market</div>
+              <p>A Router agent classifies the question, then competing Specialist agents bid with their own prices and reputations. The Router pays the best value — settled via x402.</p>
+            </div>
+            <div className="how-card">
+              <div className="how-num">03</div>
+              <div className="how-title">The Specialist judges — or reuses</div>
+              <p>The paid Specialist judges each experience for relevance. If a near-identical question was judged recently, it reuses that work and refunds the saving — caching real money.</p>
+            </div>
+            <div className="how-card">
+              <div className="how-num">04</div>
+              <div className="how-title">Contributors are paid per use</div>
+              <p>Each experience that shaped the answer earns its author a share, proportional to how much it helped. Representative "Con" agents take a referral cut. Unused budget is refunded.</p>
+            </div>
+            <div className="how-card">
+              <div className="how-num">05</div>
+              <div className="how-title">Voice becomes value</div>
+              <p>Contribute by speaking. A Transcription agent is paid autonomously — priced on length, congestion and reputation, with a Fees agent refusing any overcharge — then your words enter the pool.</p>
+            </div>
+            <div className="how-card">
+              <div className="how-num">06</div>
+              <div className="how-title">Anchored on-chain</div>
+              <p>Every accepted experience is anchored on Arc — a permanent cryptographic link between an anonymous contributor and their words. Provenance without identity.</p>
+            </div>
+          </div>
         </motion.div>
- </section>
-
+      </section>
       <section className="band">
         <div className="inner">
-          <FlowDiagram />
+          <div className="how-map-label eyebrow">the whole economy, live</div>
+          <EconomyMap activeNodes={new Set(["asker","escrow","router","specialist","pool","contributor","con","fees","transcription"])} pulses={[]} />
         </div>
       </section>
 
@@ -158,6 +188,7 @@ body { margin: 0; background: #FBF7F0; }
 .nav a:hover { opacity: 1; }
 .hero-body { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column;
   justify-content: center; max-width: 1100px; width: 100%; margin: 0 auto; padding: 2rem 0 4rem; }
+.hero-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; color: var(--gold); margin-bottom: 1.1rem; max-width: 60ch; line-height: 1.5; }
 .hero-body h1 { font-family: Newsreader, Georgia, serif; font-size: clamp(2.4rem, 6vw, 4rem);
   line-height: 1.08; font-weight: 500; margin: 0 0 1.5rem; letter-spacing: -0.02em; max-width: 16ch; }
 .lede { font-size: clamp(1.1rem, 2vw, 1.35rem); line-height: 1.6; color: #3a3446; max-width: 46ch;
@@ -206,6 +237,16 @@ body { margin: 0; background: #FBF7F0; }
 .steps li { counter-increment: s; position: relative; padding-left: 2.6rem; font-size: 1.12rem; line-height: 1.5; color: #4a4456; }
 .steps li::before { content: counter(s, decimal-leading-zero); position: absolute; left: 0; top: 0.15rem; font-family: ui-monospace, monospace; font-size: 0.85rem; color: var(--gold); font-weight: 700; }
 .steps b { color: var(--ink); }
+.how-lede { font-size: 1.15rem; line-height: 1.6; color: #3a3446; max-width: 60ch; margin: 0 0 2.5rem; }
+.how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; }
+.how-card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem 1.4rem; transition: border-color 0.2s, transform 0.2s; }
+.how-card:hover { border-color: var(--gold); transform: translateY(-3px); }
+.how-num { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--gold); font-weight: 700; margin-bottom: 0.8rem; letter-spacing: 0.05em; }
+.how-title { font-family: Newsreader, Georgia, serif; font-size: 1.22rem; font-weight: 500; color: var(--ink); margin-bottom: 0.6rem; line-height: 1.25; }
+.how-card p { font-size: 0.96rem; line-height: 1.55; color: #4a4456; margin: 0; }
+.how-map-label { margin-bottom: 1.5rem; }
+@media (max-width: 900px) { .how-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .how-grid { grid-template-columns: 1fr; } }
 .ft { background: var(--ink); padding: 2rem clamp(1.5rem, 5vw, 5rem); }
 .ft-in { display: flex; justify-content: space-between; font-size: 0.82rem; color: #b8b2c2; }
 @media (max-width: 620px) {
