@@ -1,6 +1,6 @@
 "use client";
 
-import FlowDiagram from "../components/FlowDiagram";
+import EconomyMap from "../components/EconomyMap";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -21,6 +21,18 @@ export default function Ask() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [active, setActive] = useState<Stage | null>(null);
   const [domain, setDomain] = useState<string | null>(null);
+  const [activeNodes, setActiveNodes] = useState<Set<string>>(new Set());
+  const [pulses, setPulses] = useState<{ id: number; from: string; to: string; kind: "pay" | "data" }[]>([]);
+  const pulseId = useRef(0);
+
+  function lightNode(...ids: string[]) {
+    setActiveNodes((prev) => { const n = new Set(prev); ids.forEach((i) => n.add(i)); return n; });
+  }
+  function firePulse(from: string, to: string, kind: "pay" | "data") {
+    const id = ++pulseId.current;
+    setPulses((p) => [...p, { id, from, to, kind }]);
+    setTimeout(() => setPulses((p) => p.filter((x) => x.id !== id)), 1400);
+  }
   const [done, setDone] = useState<DoneData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -29,8 +41,7 @@ export default function Ask() {
     setFeed((f) => [...f, item]);
     setTimeout(() => feedRef.current?.scrollTo({ top: 1e9, behavior: "smooth" }), 30);
   }
-
-  function reset() { setFeed([]); setActive(null); setDomain(null); setDone(null); setError(null); }
+  function reset() { setFeed([]); setActive(null); setDomain(null); setDone(null); setError(null); setActiveNodes(new Set()); setPulses([]); }
 
   function ask() {
     if (!question.trim()) return;
@@ -38,20 +49,22 @@ export default function Ask() {
     const es = new EventSource(`/api/ask/stream?q=${encodeURIComponent(question)}&budget=${budget}`);
     es.onmessage = (e) => {
       const evt = JSON.parse(e.data);
-      switch (evt.type) {
-        case "start": setActive("classify"); push({ kind: "info", text: "Question received", sub: `budget $${evt.budget}` }); break;
-        case "classified": setDomain(evt.domain); push({ kind: "route", text: "Router classified the question", sub: evt.domain.toUpperCase() }); break;
-        case "quote": setActive("specialist"); push({ kind: "info", text: `${evt.label} specialist quotes $${evt.price.toFixed(6)}`, sub: evt.breakdown }); break;
+    switch (evt.type) {
+        case "start": setActive("classify"); lightNode("asker", "escrow"); firePulse("asker", "escrow", "pay"); push({ kind: "info", text: "Question received", sub: `budget $${evt.budget}` }); break;
+        case "budget": push({ kind: "info", text: evt.note ?? "budget update", sub: `remaining $${(evt.remaining ?? 0).toFixed(6)}` }); break;
+        case "classified": setDomain(evt.domain); lightNode("router"); firePulse("escrow", "router", "data"); push({ kind: "route", text: "Router classified the question", sub: evt.domain.toUpperCase() }); break;
+        case "quote": setActive("specialist"); lightNode("specialist"); push({ kind: "info", text: `${evt.label} specialist quotes $${evt.price.toFixed(6)}`, sub: evt.breakdown }); break;
         case "decision": push({ kind: "route", text: "Router decision", sub: evt.reason }); break;
-        case "specialist_paid": setActive("judge"); push({ kind: "pay", text: `Router paid the specialist`, sub: `$${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
-        case "retrieved": push({ kind: "info", text: `Specialist pulled ${evt.count} experiences to judge` }); break;
+        case "specialist_paid": setActive("judge"); lightNode("specialist"); firePulse("escrow", "specialist", "pay"); push({ kind: "pay", text: `Router paid the specialist`, sub: `$${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
+        case "retrieved": lightNode("pool"); firePulse("specialist", "pool", "data"); push({ kind: "info", text: `Specialist pulled ${evt.count} experiences to judge` }); break;
         case "judgment": push({ kind: evt.kept ? "judge-keep" : "judge-drop", text: evt.title, sub: `${evt.kept ? "kept" : "dropped"} · relevance ${evt.relevance.toFixed(2)} — ${evt.reason}` }); break;
         case "judging_done": push({ kind: "info", text: "Judging complete" }); break;
-        case "synthesizing": setActive("synthesize"); push({ kind: "write", text: "Synthesizing the answer…" }); break;
+        case "synthesizing": setActive("synthesize"); lightNode("router"); push({ kind: "write", text: "Synthesizing the answer…" }); break;
         case "answer": break;
-        case "payout": setActive("pay"); push({ kind: "pay", text: `Paid contributor`, sub: `"${evt.title}" · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
-        case "con_cut": push({ kind: "pay", text: `${evt.label} (agent) took its commission`, sub: `${Math.round(evt.rate * 100)}% · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
-        case "done": setDone(evt); setActive(null); setRunning(false); es.close(); break;
+        case "out_of_budget": push({ kind: "judge-drop", text: "Out of budget", sub: evt.note }); break;
+        case "payout": setActive("pay"); lightNode("contributor"); firePulse("escrow", "contributor", "pay"); push({ kind: "pay", text: `Paid contributor`, sub: `"${evt.title}" · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
+        case "con_cut": lightNode("con"); firePulse("contributor", "con", "pay"); push({ kind: "pay", text: `${evt.label} (agent) took commission`, sub: `${Math.round(evt.rate * 100)}% · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
+        case "done": lightNode("fees"); firePulse("escrow", "fees", "pay"); setDone(evt); setActive(null); setRunning(false); es.close(); break;
         case "error": setError(evt.message); setRunning(false); es.close(); break;
       }
     };
@@ -97,8 +110,8 @@ export default function Ask() {
       {(running || feed.length > 0) && !done && (
         <section className="band band-alt">
           <div className="inner">
-            <div className="flow-wrap">
-              <FlowDiagram activeStage={active} domainLabel={domain} />
+           <div className="flow-wrap">
+              <EconomyMap activeNodes={activeNodes} pulses={pulses} />
             </div>
             <div className="feed-head"><span className="live-dot" /> live — happening now</div>
             <div className="feed" ref={feedRef}>

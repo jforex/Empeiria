@@ -1,7 +1,7 @@
 /**
  * The streaming orchestrator. Emits every step live via SSE:
  * classify -> quote -> decide -> pay specialist (real tx) -> relay specialist's
- * live judgments -> synthesize -> pay contributors (real tx each) -> done.
+ * live judgments -> synthesize -> sequential budget ledger -> pay contributors -> done.
  */
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
       try {
         const { data: q } = await db.from("queries").insert({ question, budget_usdc: budget }).select().single();
         send({ type: "start", question, budget });
+        send({ type: "budget", stage: "escrow", spent: 0, remaining: budget, note: `$${budget.toFixed(6)} held in escrow` });
 
         // 1. classify
         const domain = await classifyDomain(question);
@@ -143,12 +144,17 @@ export async function GET(req: NextRequest) {
 
         const survivors = judged.filter((j) => j.relevance >= RELEVANCE_FLOOR).sort((a, b) => b.relevance - a.relevance);
         const platformFee = Number((budget * 0.07).toFixed(6));
-        const spendable = budget - specialistFee - platformFee;
 
-        if (survivors.length === 0 || spendable <= 0) {
+        // ---- SEQUENTIAL BUDGET LEDGER ----
+        // escrow starts at budget; specialist already paid above. Track what remains.
+        let remaining = Number((budget - specialistFee).toFixed(6));
+        send({ type: "budget", stage: "after_specialist", spent: specialistFee, remaining, note: `specialist paid $${specialistFee.toFixed(6)} — $${remaining.toFixed(6)} left in escrow` });
+
+        if (survivors.length === 0 || remaining - platformFee <= 0) {
+          const refunded = Number((remaining - platformFee).toFixed(6));
           const spent = Number(specialistFee.toFixed(6));
-          await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: Number((budget - spent - platformFee).toFixed(6)) }).eq("id", q.id);
-          send({ type: "done", answer: "", domain, specialistFee, spent, platformFee, refunded: Number((budget - spent - platformFee).toFixed(6)), paid: [] });
+          await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: Math.max(0, refunded) }).eq("id", q.id);
+          send({ type: "done", answer: "", domain, specialistFee, specialistTx, spent, platformFee, refunded: Math.max(0, refunded), paid: [] });
           controller.close(); return;
         }
 
@@ -162,21 +168,30 @@ export async function GET(req: NextRequest) {
         }
         send({ type: "answer", answer });
 
+        // reserve the platform fee so contributor payments never eat into it
+        const reserveFee = platformFee;
+        const spendablePool = Math.max(0, remaining - reserveFee);
+
         const rawWeights = survivors.map((s, i) => ({ s, contribution: contribMap[i] ?? 0, w: (contribMap[i] ?? 0) * (s.quality_score ?? 0.5) }));
         const totalW = rawWeights.reduce((sum, x) => sum + x.w, 0) || 1;
         const scored: Scored[] = rawWeights.filter((x) => x.contribution > 0).map((x) => {
           const weight = x.w / totalW;
-          return { ...x.s, contribution: x.contribution, weight, amount_usdc: Number((spendable * weight).toFixed(6)), reason: `contributed ${(x.contribution * 100).toFixed(0)}%` };
-        }).filter((x) => x.amount_usdc > 0);
+          return { ...x.s, contribution: x.contribution, weight, amount_usdc: Number((spendablePool * weight).toFixed(6)), reason: `contributed ${(x.contribution * 100).toFixed(0)}%` };
+        }).filter((x) => x.amount_usdc > 0)
+          .sort((a, b) => b.contribution - a.contribution); // highest contribution first
 
-        // 6. pay contributors (real tx each)
+        // 6. pay contributors sequentially, gated by the running escrow balance
         const g = getGateway();
         const paid: Array<{ title: string; amount: number; contribution: number; tx: string | null }> = [];
-       for (const s of scored) {
+        for (const s of scored) {
+          // strict budget check: keep the platform fee in reserve
+          if (s.amount_usdc > remaining - reserveFee + 1e-9) {
+            send({ type: "out_of_budget", title: s.title, needed: s.amount_usdc, remaining: Number((remaining - reserveFee).toFixed(6)), note: `escrow can't cover "${s.title}" — skipped` });
+            continue;
+          }
+
           const { data: contrib } = await db.from("contributors")
             .select("wallet_address, con_id").eq("id", s.contributor_id).single();
-
-          // does this contributor have a Con (representative agent)? split the payout.
           let con: { id: string; label: string; fee_rate: number; wallet_address: string } | null = null;
           if (contrib?.con_id) {
             const { data: c } = await db.from("cons")
@@ -185,20 +200,20 @@ export async function GET(req: NextRequest) {
           }
           const conCut = con ? Number((s.amount_usdc * con.fee_rate).toFixed(6)) : 0;
           const contributorNet = Number((s.amount_usdc - conCut).toFixed(6));
-
           let tx: string | null = null;
           try {
-            // pay the contributor their net share
             const payUrl = `${BASE_URL}/api/pay-contributor?payTo=${contrib!.wallet_address}&amount=${contributorNet.toFixed(6)}`;
             const pr = await g.pay(payUrl, { method: "GET" });
             tx = (pr as { transaction?: string }).transaction ?? (pr as { data?: { transaction?: string } }).data?.transaction ?? null;
             await db.from("payouts").insert({ query_id: q.id, experience_id: s.id, contributor_id: s.contributor_id, relevance: s.relevance, contribution: s.contribution, weight: s.weight, amount_usdc: contributorNet, reason: s.reason, gateway_tx: tx });
             await db.rpc("increment_contributor_earnings", { cid: s.contributor_id, amount: contributorNet }).then(() => {}, () => {});
           } catch { /* mark failed below */ }
+
+          remaining = Number((remaining - s.amount_usdc).toFixed(6));
           paid.push({ title: s.title, amount: contributorNet, contribution: s.contribution, tx });
           send({ type: "payout", title: s.title, amount: contributorNet, contribution: s.contribution, tx });
+          send({ type: "budget", stage: "after_contributor", spent: s.amount_usdc, remaining, note: `paid "${s.title}" — $${remaining.toFixed(6)} left in escrow` });
 
-          // pay the Con its commission (agent-to-agent, real)
           if (con && conCut > 0) {
             try {
               const conUrl = `${BASE_URL}/api/pay-contributor?payTo=${con.wallet_address}&amount=${conCut.toFixed(6)}`;
@@ -206,14 +221,17 @@ export async function GET(req: NextRequest) {
               const conTx = (cpr as { transaction?: string }).transaction ?? (cpr as { data?: { transaction?: string } }).data?.transaction ?? null;
               await db.rpc("increment_con_earnings", { con_id_in: con.id, amount: conCut }).then(() => {}, () => {});
               send({ type: "con_cut", label: con.label, amount: conCut, rate: con.fee_rate, tx: conTx });
-            } catch { /* con cut failed, non-fatal */ }
+            } catch { /* non-fatal */ }
           }
         }
 
-        const contribSpent = scored.reduce((sum, x) => sum + x.amount_usdc, 0);
-        const spent = Number((specialistFee + contribSpent).toFixed(6));
-        const refunded = Number((budget - spent - platformFee).toFixed(6));
+        // 7. platform fee + refund the remainder
+        const afterFee = Number((remaining - platformFee).toFixed(6));
+        send({ type: "budget", stage: "platform_fee", spent: platformFee, remaining: afterFee, note: `platform fee $${platformFee.toFixed(6)} — $${afterFee.toFixed(6)} left` });
+        const refunded = Math.max(0, afterFee);
+        const spent = Number((budget - refunded).toFixed(6));
         await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: refunded, answer }).eq("id", q.id);
+        send({ type: "budget", stage: "refund", spent: 0, remaining: refunded, note: `refunded $${refunded.toFixed(6)} to asker` });
 
         send({ type: "done", answer, domain, specialistFee, specialistTx, spent, platformFee, refunded, paid });
       } catch (err) {
