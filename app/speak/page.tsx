@@ -10,11 +10,11 @@ const supabase = createClient(
 );
 
 type TextResult =
-  | { accepted: true; claimKey: string; domain: string; quality: number; title: string; reason: string; con?: { label: string; feeRate: number } | null }
+  | { accepted: true; claimKey: string; domain: string; quality: number; title: string; reason: string; con?: { label: string; feeRate: number } | null; anchor?: { storyHash: string; txHash: string } | null }
   | { accepted: false; reason: string };
 
 type AudioResult =
-  | { accepted: true; claimKey: string; domain: string; quality: number; title: string; reason: string; transcript: string; transcriptionTx: string | null; quote: { price: number; breakdown: string }; surcharge: number; totalFee: number; con?: { label: string; feeRate: number } | null }
+  | { accepted: true; claimKey: string; domain: string; quality: number; title: string; reason: string; transcript: string; transcriptionTx: string | null; quote: { price: number; breakdown: string }; surcharge: number; totalFee: number; con?: { label: string; feeRate: number } | null; anchor?: { storyHash: string; txHash: string } | null }
   | { accepted: false; declined?: boolean; reason: string; transcript?: string };
 
 export default function Speak() {
@@ -233,6 +233,13 @@ export default function Speak() {
                         <div className="claim-key">{vResult.claimKey}</div>
                         <div className="claim-note">No account, no name. <a href="/earnings" style={{ color: "var(--gold)", fontWeight: 600 }}>Check earnings →</a></div>
                       </div>
+                      {vResult.anchor && (
+                        <div className="anchor">
+                          <div className="anchor-label">⛓ anchored on Arc — permanent proof you authored this</div>
+                          <div className="anchor-row"><span>story hash</span><code>{vResult.anchor.storyHash.slice(0, 18)}…</code></div>
+                          <div className="anchor-row"><span>anchor tx</span><code>{vResult.anchor.txHash.slice(0, 18)}…</code></div>
+                        </div>
+                      )}
                       <button className="btn btn-ghost" onClick={resetAll}>Share another →</button>
                     </div>
                   </div>
@@ -289,6 +296,13 @@ function ResultCard({ result, onReset, onRevise }: { result: TextResult; onReset
               <div className="claim-key">{result.claimKey}</div>
               <div className="claim-note">No account, no name. <a href="/earnings" style={{ color: "var(--gold)", fontWeight: 600 }}>Check earnings →</a></div>
             </div>
+            {result.anchor && (
+              <div className="anchor">
+                <div className="anchor-label">⛓ anchored on Arc — permanent proof you authored this</div>
+                <div className="anchor-row"><span>story hash</span><code>{result.anchor.storyHash.slice(0, 18)}…</code></div>
+                <div className="anchor-row"><span>anchor tx</span><code>{result.anchor.txHash.slice(0, 18)}…</code></div>
+              </div>
+            )}
             <button className="btn btn-ghost" onClick={onReset}>Share another →</button>
           </div>
         </div>
@@ -372,6 +386,11 @@ body { margin: 0; background: #FBF7F0; }
 .claim-key { font-family: ui-monospace, monospace; font-size: 1.5rem; font-weight: 700; color: var(--ink); letter-spacing: 0.05em; }
 .claim-note { font-size: 0.82rem; color: #8a8073; margin-top: 0.6rem; line-height: 1.4; }
 .reject .verdict-in { border: 1px solid #e8d5cf; }
+.anchor { background: #f2eff7; border: 1px solid #ddd4ea; border-radius: 12px; padding: 1.1rem; margin-bottom: 1.5rem; }
+.anchor-label { font-size: 0.78rem; color: var(--violet); font-weight: 600; margin-bottom: 0.7rem; }
+.anchor-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.25rem 0; }
+.anchor-row span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8a8073; }
+.anchor-row code { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--violet); }
 .why { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1.1rem; }
 .why li { font-size: 1.08rem; line-height: 1.55; color: #4a4456; padding-left: 1.3rem; position: relative; }
 .why li::before { content: "—"; position: absolute; left: 0; color: var(--gold); font-weight: 700; }

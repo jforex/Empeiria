@@ -9,6 +9,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { randomBytes } from "crypto";
 import { gateSubmission } from "@/lib/gate";
 import { embed } from "@/lib/agent-loop";
+import { anchorContribution } from "@/lib/anchor";
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,8 +59,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. embed + store the experience
-    const embedding = await embed(`${verdict.suggestedTitle}\n${body}`);
-    const { error: eErr } = await db.from("experiences").insert({
+const embedding = await embed(`${verdict.suggestedTitle}\n${body}`);
+    const { data: exp, error: eErr } = await db.from("experiences").insert({
       contributor_id: contributor.id,
       title: verdict.suggestedTitle,
       body: body.trim(),
@@ -68,8 +69,18 @@ export async function POST(req: NextRequest) {
       domain: verdict.domain,
       status: "approved",
       embedding,
-    });
+    }).select().single();
     if (eErr) throw eErr;
+
+    // anchor provenance on-chain (platform attests contributor + content hash)
+    let anchor: { storyHash: string; txHash: string } | null = null;
+    try {
+      const a = await anchorContribution(body.trim(), address);
+      anchor = { storyHash: a.storyHash, txHash: a.txHash };
+      await db.from("experiences").update({
+        story_hash: a.storyHash, anchor_tx: a.txHash, anchored_contributor: address,
+      }).eq("id", exp.id);
+    } catch { /* anchoring is best-effort; submission still succeeds */ }
 
   return NextResponse.json({
       accepted: true,
@@ -79,6 +90,7 @@ export async function POST(req: NextRequest) {
       title: verdict.suggestedTitle,
       reason: verdict.reason,
       con: con ? { label: con.label, feeRate: con.fee_rate } : null,
+      anchor,
     });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });

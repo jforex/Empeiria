@@ -14,6 +14,7 @@ import { GatewayClient } from "@circle-fin/x402-batching/client";
 import { gateSubmission } from "@/lib/gate";
 import { embed } from "@/lib/agent-loop";
 import { transcriptionQuote, feesAgentDecides, claritySurcharge } from "@/lib/transcribe-pricing";
+import { anchorContribution } from "@/lib/anchor";
 
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
@@ -103,19 +104,30 @@ export async function POST(req: NextRequest) {
     if (cErr) throw cErr;
     if (con) await db.rpc("increment_con_contributors", { con_id_in: con.id }).then(() => {}, () => {});
 
-    const embedding = await embed(`${verdict.suggestedTitle}\n${transcript}`);
-    const { error: eErr } = await db.from("experiences").insert({
+ const embedding = await embed(`${verdict.suggestedTitle}\n${transcript}`);
+    const { data: exp, error: eErr } = await db.from("experiences").insert({
       contributor_id: contributor.id, title: verdict.suggestedTitle, body: transcript.trim(),
       source_format: "audio", quality_score: verdict.quality, domain: verdict.domain,
       status: "approved", embedding,
-    });
+    }).select().single();
     if (eErr) throw eErr;
+
+    // anchor provenance on-chain
+    let anchor: { storyHash: string; txHash: string } | null = null;
+    try {
+      const a = await anchorContribution(transcript.trim(), address);
+      anchor = { storyHash: a.storyHash, txHash: a.txHash };
+      await db.from("experiences").update({
+        story_hash: a.storyHash, anchor_tx: a.txHash, anchored_contributor: address,
+      }).eq("id", exp.id);
+    } catch { /* best-effort */ }
 
     return NextResponse.json({
       accepted: true, claimKey, transcript, domain: verdict.domain, quality: verdict.quality,
       title: verdict.suggestedTitle, reason: verdict.reason, transcriptionTx,
       quote: { price: quote.price, breakdown: quote.breakdown }, surcharge, totalFee,
       con: con ? { label: con.label, feeRate: con.fee_rate } : null,
+      anchor,
     });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
