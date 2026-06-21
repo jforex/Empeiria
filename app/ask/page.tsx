@@ -24,7 +24,8 @@ export default function Ask() {
   const [activeNodes, setActiveNodes] = useState<Set<string>>(new Set());
   const [pulses, setPulses] = useState<{ id: number; from: string; to: string; kind: "pay" | "data" }[]>([]);
   const pulseId = useRef(0);
-
+  const [bids, setBids] = useState<{ label: string; price: number; reputation: number }[]>([]);
+  const [winner, setWinner] = useState<string | null>(null);
   function lightNode(...ids: string[]) {
     setActiveNodes((prev) => { const n = new Set(prev); ids.forEach((i) => n.add(i)); return n; });
   }
@@ -41,7 +42,7 @@ export default function Ask() {
     setFeed((f) => [...f, item]);
     setTimeout(() => feedRef.current?.scrollTo({ top: 1e9, behavior: "smooth" }), 30);
   }
-  function reset() { setFeed([]); setActive(null); setDomain(null); setDone(null); setError(null); setActiveNodes(new Set()); setPulses([]); }
+ function reset() { setFeed([]); setActive(null); setDomain(null); setDone(null); setError(null); setActiveNodes(new Set()); setPulses([]); setBids([]); setWinner(null); }
 
   function ask() {
     if (!question.trim()) return;
@@ -53,6 +54,8 @@ export default function Ask() {
         case "start": setActive("classify"); lightNode("asker", "escrow"); firePulse("asker", "escrow", "pay"); push({ kind: "info", text: "Question received", sub: `budget $${evt.budget}` }); break;
         case "budget": push({ kind: "info", text: evt.note ?? "budget update", sub: `remaining $${(evt.remaining ?? 0).toFixed(6)}` }); break;
         case "classified": setDomain(evt.domain); lightNode("router"); firePulse("escrow", "router", "data"); push({ kind: "route", text: "Router classified the question", sub: evt.domain.toUpperCase() }); break;
+        case "bid": setBids((b) => [...b, { label: evt.label, price: evt.price, reputation: evt.reputation }]); break;
+        case "quote": setActive("specialist"); lightNode("specialist"); setWinner(evt.label); push({ kind: "route", text: `Router chose ${evt.label}`, sub: evt.reason ?? evt.breakdown }); break;
         case "quote": setActive("specialist"); lightNode("specialist"); push({ kind: "info", text: `${evt.label} specialist quotes $${evt.price.toFixed(6)}`, sub: evt.breakdown }); break;
         case "decision": push({ kind: "route", text: "Router decision", sub: evt.reason }); break;
         case "specialist_paid": setActive("judge"); lightNode("specialist"); firePulse("escrow", "specialist", "pay"); push({ kind: "pay", text: `Router paid the specialist`, sub: `$${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
@@ -110,9 +113,22 @@ export default function Ask() {
       {(running || feed.length > 0) && !done && (
         <section className="band band-alt">
           <div className="inner">
-           <div className="flow-wrap">
+         <div className="flow-wrap">
               <EconomyMap activeNodes={activeNodes} pulses={pulses} />
             </div>
+            {bids.length > 0 && (
+              <div className="bidding">
+                <div className="bidding-head">the bidding — {bids.length} specialist{bids.length > 1 ? "s" : ""} competed{winner ? `, router chose by best value` : ""}</div>
+                <div className="bidding-row">
+                  {bids.map((b, i) => (
+                    <div key={i} className={`bid-chip ${winner === b.label ? "bid-win" : ""}`}>
+                      <div className="bid-label">{b.label}{winner === b.label && <span className="bid-check"> ✓ chosen</span>}</div>
+                      <div className="bid-meta"><span className="bid-price">${b.price.toFixed(6)}</span><span className="bid-rep">{b.reputation}% rep</span></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="feed-head"><span className="live-dot" /> live — happening now</div>
             <div className="feed" ref={feedRef}>
               <AnimatePresence initial={false}>
@@ -209,6 +225,17 @@ body { margin: 0; background: #FBF7F0; }
 .btn:disabled { opacity: 0.45; cursor: default; }
 .btn-solid { background: var(--ink); color: var(--paper); }
 .flow-wrap { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 2rem 1.5rem; margin-bottom: 2rem; }
+.bidding { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.3rem; margin-bottom: 2rem; }
+.bidding-head { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #8a7d62; font-weight: 600; margin-bottom: 0.9rem; }
+.bidding-row { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+.bid-chip { flex: 1; min-width: 150px; border: 1.5px solid var(--line); border-radius: 11px; padding: 0.7rem 0.9rem; background: var(--paper); opacity: 0.7; transition: all 0.2s; }
+.bid-win { border-color: var(--gold); border-width: 2px; background: #fbf3e0; opacity: 1; box-shadow: 0 2px 10px rgba(184,146,62,0.15); }
+.bid-label { font-family: Newsreader, Georgia, serif; font-size: 0.98rem; color: var(--ink); font-weight: 500; margin-bottom: 0.35rem; }
+.bid-check { color: var(--gold); font-weight: 600; font-size: 0.82rem; font-family: ui-sans-serif, system-ui, sans-serif; }
+.bid-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+.bid-price { font-family: ui-monospace, monospace; font-size: 0.95rem; color: var(--gold); font-weight: 600; }
+.bid-rep { font-family: ui-monospace, monospace; font-size: 0.74rem; color: #8a8073; }
+@media (max-width: 620px) { .bid-chip { min-width: 120px; } }
 .feed-head { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.16em; color: #8a7d62; font-weight: 600; margin-bottom: 1rem; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--clay); animation: blink 1.2s ease-in-out infinite; }
 @keyframes blink { 50% { opacity: 0.3; } }

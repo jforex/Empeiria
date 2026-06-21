@@ -80,11 +80,34 @@ export async function GET(req: NextRequest) {
         const domain = await classifyDomain(question);
         send({ type: "classified", domain });
 
-        // 2. specialist quotes, router decides
-        const { data: spec } = await db.from("specialists").select("*").eq("domain", domain).single();
+       // 2. COMPETING SPECIALISTS — every provider in the domain quotes; router picks best value.
+        const { data: providers } = await db.from("specialists").select("*").eq("domain", domain);
         const supply = await domainSupply(domain);
-        const quote = await quoteFor(spec, supply);
-        send({ type: "quote", label: spec.label, price: quote.price, breakdown: quote.breakdown });
+
+        if (!providers || providers.length === 0) {
+          send({ type: "error", message: `no specialist available for ${domain}` });
+          controller.close(); return;
+        }
+
+        // each provider quotes (effort × scarcity × reputation)
+        const bids = await Promise.all(providers.map(async (p) => {
+          const qt = await quoteFor(p, supply);
+          // value score: price per unit of reputation (lower = better value). reputation floored so new agents aren't infinite.
+          const rep = Math.max(0.25, p.avg_relevance ?? 0.7);
+          const valueScore = qt.price / rep;
+          return { provider: p, quote: qt, rep, valueScore };
+        }));
+
+        // show the bidding live
+        for (const b of bids.sort((a, z) => a.valueScore - z.valueScore)) {
+          send({ type: "bid", label: b.provider.label, price: b.quote.price, reputation: Math.round(b.rep * 100), breakdown: b.quote.breakdown });
+        }
+
+        // router picks the best value (lowest price-per-reputation)
+        const winner = bids.reduce((best, b) => (b.valueScore < best.valueScore ? b : best), bids[0]);
+        const spec = winner.provider;
+        const quote = winner.quote;
+        send({ type: "quote", label: spec.label, price: quote.price, breakdown: quote.breakdown, chosenFrom: bids.length, reason: `best value of ${bids.length} bids — $${quote.price.toFixed(6)} at ${Math.round(winner.rep * 100)}% reputation` });
 
         const decision = routerDecides(quote, budget);
         send({ type: "decision", accept: decision.accept, threshold: decision.threshold, reason: decision.reason });
