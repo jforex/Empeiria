@@ -1,187 +1,160 @@
-# Arc Nanopayments Demo
+# Empeiria
 
-Demonstrate gasless USDC nanopayments using [Circle Nanopayments](https://www.circle.com/nanopayments) on Arc. A **LangChain agent** acts as the buyer, autonomously paying for paywalled resources, while a **Next.js web app** acts as the seller, exposing x402-protected endpoints and providing a seller dashboard to monitor payments and withdraw earnings.
+**An autonomous knowledge marketplace driven by x402 agentic payments.**
 
-Circle Gateway batches many signed offchain authorizations into a single onchain settlement, enabling economically viable sub-cent payments.
+People anonymously share lived experience — by writing or by voice. When someone else asks a question, a network of autonomous agents routes it, competes to do the work, judges which experiences genuinely help, synthesizes an answer, and settles payment to the contributors in USDC on Arc — all without a human in the loop. Contributors earn the moment their experience is used, into private wallets, under no name.
 
-<img alt="Arc Nanopayments Demo dashboard" src="public/screenshot.png" />
+🔗 **Live:** https://empeiria.vercel.app
+⛓️ **Settlement:** USDC on Arc Testnet, via Circle Gateway + x402 micropayments
 
-## Table of Contents
+---
 
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [How It Works](#how-it-works)
-- [Paywalled Endpoints](#paywalled-endpoints)
-- [Seller Dashboard](#seller-dashboard)
-- [Environment Variables](#environment-variables)
-- [Demo Credentials](#demo-credentials)
+## Why this exists
 
-## Prerequisites
+The hardest things a person comes through — losing money, surviving burnout, leaving a relationship — are worth real money to someone facing them now. But the people who lived them have no way to be paid for that knowledge, and no way to share it without exposing themselves.
 
-- **Node.js v22+** — Install via [nvm](https://github.com/nvm-sh/nvm)
-- **Supabase CLI** — Install via `npm install -g supabase` or see [Supabase CLI docs](https://supabase.com/docs/guides/cli/getting-started)
-- **Docker Desktop** (only if using the local Supabase path) — [Install Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- *(Optional)* An **[OpenAI API key](https://platform.openai.com/api-keys)** — enables the LLM-driven payment agent. Without it, the agent runs in mock mode with scripted tool calls.
+Empeiria turns lived experience into a paid, anonymous, agent-run market. The contributor never negotiates, never sets a price, never reveals who they are. Autonomous agents do all the economic work: pricing, judging, paying, and refunding.
 
-## Getting Started
+---
 
-1. Clone the repository and install dependencies:
+## What the agents decide (no human in the loop)
 
-   ```bash
-   git clone https://github.com/akelani-circle/arc-nanopayments-demo.git
-   cd arc-nanopayments-demo
-   npm install
-   ```
+Empeiria is built around real autonomous economic decisions, not scripted flows:
 
-2. Set up environment variables:
+- **Which resources are worth paying for** — a Router agent weighs each Specialist's price against its reputation before paying.
+- **How to allocate a budget across services** — a sequential escrow ledger spends a query's budget down step by step, checking what remains before each payment and refusing anything it can't afford.
+- **When to cache vs. re-fetch paid work** — if a near-identical question was judged recently, the system reuses that paid judgment instead of paying again, and refunds the saving to the asker.
+- **Quality vs. price between competing providers** — multiple Specialist agents bid on each question; the Router picks the best value (lowest price-per-reputation) and the bidding is shown live.
 
-   ```bash
-   cp .env.example .env.local
-   ```
+---
 
-   Then edit `.env.local` and fill in all required values (see [Environment Variables](#environment-variables) section below).
+## Architecture
 
-3. Generate seller and buyer wallets:
-
-   ```bash
-   npm run generate-wallets
-   ```
-
-   This creates two EVM wallets (seller and buyer) and writes the addresses and private keys to `.env.local`. Follow the on-screen instructions to fund the buyer wallet with testnet USDC via the [Circle faucet](https://faucet.circle.com/).
-
-4. Set up the database — Choose one of the two paths below:
-
-   <details>
-   <summary><strong>Path 1: Local Supabase (Docker)</strong></summary>
-
-   Requires Docker Desktop installed and running.
-
-   ```bash
-   npx supabase start
-   npx supabase migration up
-   ```
-
-   The output of `npx supabase start` will display the Supabase URL and API keys needed for your `.env.local`.
-
-   </details>
-
-   <details>
-   <summary><strong>Path 2: Remote Supabase (Cloud)</strong></summary>
-
-   Requires a [Supabase](https://supabase.com/) account and project.
-
-   ```bash
-   npx supabase link --project-ref <your-project-ref>
-   npx supabase db push
-   ```
-
-   Retrieve your project URL and API keys from the Supabase dashboard under **Settings > API**.
-
-   </details>
-
-5. Start the development server:
-
-   ```bash
-   npm run dev
-   ```
-
-   The app will be available at `http://localhost:3000`.
-
-6. Run the AI payment agent:
-
-   ```bash
-   npm run agent
-   ```
-
-   The agent uses the buyer wallet to purchase resources from the x402-protected premium endpoints, paying with USDC on the Arc Testnet. If `OPENAI_API_KEY` is set, the agent uses the LLM to decide which tools to call; otherwise it falls back to a scripted mock run. You can optionally pass a custom query:
-
-   ```bash
-   npm run agent -- "Buy me a quote at http://localhost:3000/api/premium/quote"
-   ```
-
-   To set a USDC spending limit, use the `--limit` flag. The agent will pause when the limit is reached and prompt for additional allowance:
-
-   ```bash
-   npm run agent -- --limit 0.5
-   ```
-
-## How It Works
-
-- Built with [Next.js](https://nextjs.org/) App Router and [Supabase](https://supabase.com/)
-- Uses the [x402 protocol](https://www.x402.org/) for HTTP 402 nanopayments with USDC on the [Arc Network](https://arc.circle.com/)
-- Uses [Circle's x402 batching SDK](https://www.npmjs.com/package/@circle-fin/x402-batching) (`GatewayClient`) for gasless payment facilitation
-- Includes an AI payment agent built with [LangChain](https://js.langchain.com/) and [Deep Agents](https://www.npmjs.com/package/deepagents) that can check balances, deposit USDC into Gateway, verify endpoint support, and autonomously pay for x402-protected resources
-- Seller dashboard with real-time payment monitoring, Gateway balance display, and cross-chain withdrawal support
-- Payment events and withdrawals are persisted to Supabase with real-time subscriptions
-- Styled with [Tailwind CSS](https://tailwindcss.com) and components from [shadcn/ui](https://ui.shadcn.com/)
-
-## Paywalled Endpoints
-
-The seller exposes several x402-protected API routes at different price points:
-
-| Endpoint | Method | Price (USDC) | Description |
-| --- | --- | --- | --- |
-| `/api/premium/quote` | GET | $0.001 | Returns a premium inspirational quote |
-| `/api/premium/dataset` | GET | $0.01 | Returns a small JSON analytics dataset |
-| `/api/premium/compute` | POST | $0.0003 | Performs text analysis on submitted content |
-| `/api/premium/agent-task` | GET | $0.03 | Returns a clue/step for a treasure hunt task |
-
-Each endpoint returns `402 Payment Required` for unpaid requests. The buyer agent automatically signs the authorization and retries with the payment signature to receive the content.
-
-## Seller Dashboard
-
-The dashboard at `/dashboard` provides:
-
-- **Gateway Balance** — Top-bar badge showing the seller's available Gateway balance, with a detail dialog for total, withdrawing, withdrawable, and wallet USDC balances
-- **Payments Table** — Real-time list of incoming nanopayments with filtering and sorting, linked to [Arc Testnet Explorer](https://testnet.arcscan.app)
-- **Withdraw Dialog** — Withdraw available USDC from Gateway to a wallet address on any supported testnet chain (Arc Testnet, Base Sepolia, Ethereum Sepolia, Arbitrum Sepolia, Optimism Sepolia, Avalanche Fuji, Polygon Amoy)
-
-## Environment Variables
-
-Copy `.env.example` to `.env.local` and fill in the required values:
-
-```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-or-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# x402 / Circle Nanopayments
-SELLER_ADDRESS=0xYourWalletAddress
-SELLER_PRIVATE_KEY=0xYourSellerPrivateKey
-
-# Buyer wallet (for the payment agent)
-BUYER_ADDRESS=0xYourBuyerWalletAddress
-BUYER_PRIVATE_KEY=0xYourBuyerPrivateKey
-
-# AI Payment Agent (optional — omit to run in mock mode)
-# OPENAI_API_KEY=your-openai-api-key
+```
+                          ASK SIDE
+   ┌────────┐   budget    ┌────────┐   routes    ┌──────────┐
+   │ Asker  │ ─────────▶ │ Escrow │ ─────────▶ │  Router  │
+   └────────┘  (USDC cap) └────────┘             └────┬─────┘
+                                                       │ runs a market
+                                          ┌────────────┴────────────┐
+                                          ▼     (specialists bid)    ▼
+                                   ┌─────────────┐           ┌─────────────┐
+                                   │ Specialist  │  ...      │ Specialist  │
+                                   │   (Vega)    │           │  (Orion)    │
+                                   └──────┬──────┘           └─────────────┘
+                                          │ Router pays best value (x402)
+                                          ▼ judges relevance / reuses cache
+                                   ┌─────────────┐
+                                   │ Experience  │  ◀── anchored on Arc
+                                   │    Pool     │
+                                   └──────┬──────┘
+                                          │ pays per use (x402)
+                                          ▼
+                                   ┌─────────────┐  referral cut   ┌──────┐
+                                   │ Contributor │ ──────────────▶ │ Con  │
+                                   └─────────────┘                 └──────┘
+                          ─────────────────────────────────────────────────
+                          CONTRIBUTE SIDE (voice)
+   ┌────────┐   audio    ┌──────────────┐  pays (x402)  ┌──────────────────┐
+   │ Speaker│ ─────────▶│  Fees Agent  │ ────────────▶ │ Transcription Ag.│
+   └────────┘            └──────────────┘  (priced by    └────────┬─────────┘
+                          judges fairness   length/load)           │ Whisper
+                                                                    ▼
+                                                            ┌──────────────┐
+                                                            │ Gate Agent   │ verifies it's
+                                                            └──────┬───────┘ real lived experience
+                                                                   ▼
+                                                            Experience Pool
 ```
 
-| Variable | Scope | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project URL. |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public | Supabase anonymous / publishable key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-side | Supabase service-role key, used to record payment events and withdrawals. |
-| `SELLER_ADDRESS` | Server-side | EVM wallet address for receiving USDC payments. |
-| `SELLER_PRIVATE_KEY` | Server-side | Seller wallet private key, used for Gateway balance queries and withdrawals. |
-| `BUYER_ADDRESS` | Agent | Buyer wallet address for making payments. |
-| `BUYER_PRIVATE_KEY` | Agent | Buyer wallet private key for signing payment authorizations. |
-| `OPENAI_API_KEY` | Agent | *(Optional)* OpenAI API key. If omitted, the agent runs in mock mode with scripted tool calls. |
+### The agents
 
-> **Tip:** Run `npm run generate-wallets` to auto-generate the `SELLER_ADDRESS`, `SELLER_PRIVATE_KEY`, `BUYER_ADDRESS`, and `BUYER_PRIVATE_KEY` values.
+| Agent | Role |
+|-------|------|
+| **Router** | Classifies the question, runs the specialist market, pays the winner, orchestrates the budget ledger. |
+| **Specialists** | Compete per domain with their own price + reputation. Judge each experience for relevance. Reputation accrues from work. |
+| **Contributors** | Anonymous authors of experiences. Paid per use, proportional to how much they shaped the answer. |
+| **Cons** | Representative agents that onboard contributors and take a referral cut from their earnings. |
+| **Fees Agent** | Pays for external services (transcription) and refuses overcharging — judging fairness, not raw price. |
+| **Transcription Agent** | A paid external service that prices itself by audio length, congestion, and reputation. |
+| **Gate Agent** | Verifies every submission is genuine first-person lived experience before it enters the pool. |
 
-## Demo Credentials
+---
 
-The app uses a hardcoded demo account for local development:
+## The economic loop (a real query, end to end)
 
-| Email | Password |
-| --- | --- |
-| `admin@example.com` | `123456` |
+1. **Escrow.** A question arrives with a USDC budget cap, held in escrow.
+2. **Routing.** The Router classifies the domain and opens it to competing Specialists.
+3. **Bidding.** Each Specialist quotes a price (effort × scarcity × reputation). The Router picks the best value and pays it via x402.
+4. **Judgment — or cache.** The paid Specialist judges each experience for relevance. If a near-identical question was judged recently, it reuses that work for free and refunds the saving.
+5. **Synthesis.** An answer is written using only the experiences that survived judgment.
+6. **Payout.** The escrow is spent down sequentially — highest-contribution experiences first, each gated by the running balance. Contributors are paid; their Con takes a referral cut; a platform fee is taken; the remainder is refunded to the asker.
 
-## Security & Usage Model
+Every payment is a real settlement, surfaced live in the UI as it happens.
 
-This sample application:
-- Assumes testnet usage only
-- Handles secrets via environment variables
-- Is not intended for production use without modification
+---
+
+## On-chain provenance
+
+Every accepted experience is anchored on Arc: the platform writes a real transaction whose calldata carries `keccak256(story) + contributor address`, creating a permanent, tamper-proof link between an anonymous contributor and their exact words — provenance without identity.
+
+**Verifiable anchor transactions (Arc Testnet):**
+- `0xa0342285efde8d9dc42c967a8429cbe16da2af480f90af724141423579268bdb`
+- `0x0734fff7130fb9183770cdebbe23f7e8c466c00ae17ef77e9d54f55446115a64`
+
+> View on the Arc Testnet explorer. (Payments between agents settle through Circle Gateway's batched x402 layer, which aggregates many sub-cent micropayments into on-chain settlements — the mechanism that makes paying per-use economically viable.)
+
+---
+
+## Mapping to the hackathon RFBs
+
+**RFB 01 — Autonomous agents that pay for resources.**
+The Router and Fees agents make real cost-vs-value decisions, allocate a budget across services with a sequential ledger, cache vs. re-fetch paid work, and choose between competing providers on price and quality — settling every decision on-chain.
+
+**RFB 03 — Agent-to-agent networks with pricing and fairness.**
+Specialists form a live market: they bid, accrue reputation, and win or lose work on value. The Fees Agent enforces fairness by refusing overcharging. Cons add a representative/referral layer. Pricing emerges from supply, demand, and reputation, not fixed rates.
+
+**RFB 06 — Anonymous creator monetization.**
+Contributors earn into private wallets with only a claim key — no account, no name. They never set a price or negotiate; agents handle all of it. On-chain anchoring proves authorship without revealing identity.
+
+---
+
+## Stack
+
+- **Frontend / orchestration:** Next.js (App Router), TypeScript, server-sent events for the live agent stream
+- **Payments:** Circle Gateway + x402 micropayments, forked from `circlefin/arc-nanopayments`
+- **Chain:** Arc Testnet (USDC-native, sub-second finality) — network `eip155:5042002`
+- **Data / vectors:** Supabase (Postgres + pgvector)
+- **LLM:** Groq (Llama 3.3 70B) for classification, judgment, synthesis
+- **Embeddings:** Google `gemini-embedding-001` (768-dim) for retrieval + cache similarity
+- **Transcription:** Groq Whisper large-v3
+- **Provenance:** viem, direct Arc transactions
+
+---
+
+## Run it locally
+
+```bash
+git clone https://github.com/jforex/Empeiria.git
+cd Empeiria
+npm install
+cp .env.example .env.local   # fill in your keys
+npm run dev
+```
+
+Required environment (see `.env.example`):
+- Supabase URL + service role / publishable keys
+- Groq API key (chat + Whisper)
+- Google AI Studio key (embeddings)
+- Arc Testnet buyer/seller wallet keys + Circle Gateway config
+- `BASE_URL` (agents call the app's own API routes)
+
+---
+
+## A note on honesty
+
+Everything here settles for real — real Whisper transcription, real autonomous pricing, real on-chain anchors, real USDC payouts. Nothing is simulated. The escrow is logical accounting (held / released / refunded), framed as escrow accounting rather than a smart-contract lock. Storage policies are permissive for the testnet demo and would be tightened for production. The Transcription Agent is paid for work it actually performs even if the content is later rejected by the Gate — defensible, like paying a translator regardless of what the document says.
+
+---
+
+Built for the Lepton Agents Hackathon.
