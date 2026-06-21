@@ -51,7 +51,7 @@ export async function anchorContribution(
   // 0-value self-tx carrying the provenance payload
   const txHash = await walletClient.sendTransaction({
     to: account.address,
-    value: 0n,
+    value: BigInt(0),
     data,
   });
 
