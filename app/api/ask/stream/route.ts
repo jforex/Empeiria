@@ -205,10 +205,15 @@ export async function GET(req: NextRequest) {
           const relTotal = survivors.reduce((s, x) => s + x.relevance, 0) || 1;
           contribMap = {}; survivors.forEach((s, i) => { contribMap[i] = s.relevance / relTotal; });
         }
-        send({ type: "answer", answer });
-
-        // reserve the platform fee so contributor payments never eat into it
-        const reserveFee = platformFee;
+       send({ type: "answer", answer });
+        // On a cache hit no specialist was paid — refund that saving to the asker instead of
+        // inflating contributor payouts. Reserve a notional specialist fee out of the pool.
+        const cacheSavings = cacheHit ? Number((budget * 0.135).toFixed(6)) : 0; // ~typical specialist fee
+        if (cacheHit && cacheSavings > 0) {
+          send({ type: "budget", stage: "cache_saving", spent: 0, remaining: Number((remaining - cacheSavings).toFixed(6)), note: `cache hit — $${cacheSavings.toFixed(6)} specialist fee saved, will be refunded to asker` });
+        }
+        // reserve the platform fee AND any cache savings so contributor payments don't absorb them
+        const reserveFee = Number((platformFee + cacheSavings).toFixed(6));
         const spendablePool = Math.max(0, remaining - reserveFee);
 
         const rawWeights = survivors.map((s, i) => ({ s, contribution: contribMap[i] ?? 0, w: (contribMap[i] ?? 0) * (s.quality_score ?? 0.5) }));
