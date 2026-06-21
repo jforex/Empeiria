@@ -35,7 +35,7 @@ export default function Landing() {
         <div className="hero-veil" />
 
         <header className="hd">
-          <a href="/" className="logo">empeiria</a>
+          <a href="/" className="logo"><img src="/empeiria-logo.png" alt="" className="logo-img" />empeiria</a>
           <nav className="nav">
             <a href="/ask">Ask</a>
             <a href="/speak">Speak</a>
@@ -150,8 +150,9 @@ body { margin: 0; background: #FBF7F0; }
   background: linear-gradient(180deg, rgba(251,247,240,0.55) 0%, rgba(251,247,240,0.30) 35%, rgba(251,247,240,0.65) 100%); }
 .hd { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center;
   padding: 1.75rem 0; }
-.logo { font-size: 1.15rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700;
+.logo { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700;
   text-decoration: none; color: var(--ink); }
+.logo-img { height: 34px; width: auto; display: block; }
 .nav { display: flex; gap: 1.75rem; }
 .nav a { color: var(--ink); text-decoration: none; font-size: 0.92rem; font-weight: 600; opacity: 0.75; }
 .nav a:hover { opacity: 1; }

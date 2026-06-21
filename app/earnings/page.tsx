@@ -36,7 +36,7 @@ export default function Earnings() {
     <div className="pg">
       <style>{css}</style>
       <header className="hd">
-        <a href="/" className="logo">empeiria</a>
+        <a href="/" className="logo"><img src="/empeiria-logo.png" alt="" className="logo-img" />empeiria</a>
         <nav className="nav"><a href="/ask">Ask</a><a href="/speak">Speak</a></nav>
       </header>
 
@@ -123,7 +123,8 @@ const css = `
 body { margin: 0; background: #FBF7F0; }
 .pg { --ink:#1A1A2E; --paper:#FBF7F0; --gold:#B8923E; --violet:#6B5B95; --clay:#C1543A; --line:#e6ddcb; color: var(--ink); font-family: ui-sans-serif, system-ui, sans-serif; }
 .hd { display: flex; justify-content: space-between; align-items: center; padding: 1.75rem clamp(1.5rem,5vw,5rem); max-width: 1100px; margin: 0 auto; }
-.logo { font-size: 1.15rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; text-decoration: none; color: var(--ink); }
+.logo { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; text-decoration: none; color: var(--ink); }
+.logo-img { height: 34px; width: auto; display: block; mix-blend-mode: multiply; }
 .nav { display: flex; gap: 1.75rem; }
 .nav a { color: var(--ink); text-decoration: none; font-size: 0.92rem; font-weight: 600; opacity: 0.7; }
 .nav a:hover { opacity: 1; }
