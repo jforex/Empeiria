@@ -7,7 +7,7 @@ import { NextRequest } from "next/server";
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 import { GatewayClient } from "@circle-fin/x402-batching/client";
-import { type Judged, type Scored } from "@/lib/agent-loop";
+import { type Judged, type Scored, embed } from "@/lib/agent-loop";
 import { quoteFor, routerDecides, domainSupply } from "@/lib/pricing";
 
 const openai = new OpenAI({
@@ -80,89 +80,105 @@ export async function GET(req: NextRequest) {
         const domain = await classifyDomain(question);
         send({ type: "classified", domain });
 
-       // 2. COMPETING SPECIALISTS — every provider in the domain quotes; router picks best value.
-        const { data: providers } = await db.from("specialists").select("*").eq("domain", domain);
-        const supply = await domainSupply(domain);
-
-        if (!providers || providers.length === 0) {
-          send({ type: "error", message: `no specialist available for ${domain}` });
-          controller.close(); return;
-        }
-
-        // each provider quotes (effort × scarcity × reputation)
-        const bids = await Promise.all(providers.map(async (p) => {
-          const qt = await quoteFor(p, supply);
-          // value score: price per unit of reputation (lower = better value). reputation floored so new agents aren't infinite.
-          const rep = Math.max(0.25, p.avg_relevance ?? 0.7);
-          const valueScore = qt.price / rep;
-          return { provider: p, quote: qt, rep, valueScore };
-        }));
-
-        // show the bidding live
-        for (const b of bids.sort((a, z) => a.valueScore - z.valueScore)) {
-          send({ type: "bid", label: b.provider.label, price: b.quote.price, reputation: Math.round(b.rep * 100), breakdown: b.quote.breakdown });
-        }
-
-        // router picks the best value (lowest price-per-reputation)
-        const winner = bids.reduce((best, b) => (b.valueScore < best.valueScore ? b : best), bids[0]);
-        const spec = winner.provider;
-        const quote = winner.quote;
-        send({ type: "quote", label: spec.label, price: quote.price, breakdown: quote.breakdown, chosenFrom: bids.length, reason: `best value of ${bids.length} bids — $${quote.price.toFixed(6)} at ${Math.round(winner.rep * 100)}% reputation` });
-
-        const decision = routerDecides(quote, budget);
-        send({ type: "decision", accept: decision.accept, threshold: decision.threshold, reason: decision.reason });
-
+    // ---- CACHE CHECK: has a near-identical question been judged recently? ----
+        // If so, reuse those paid judgments for free instead of re-paying a specialist.
         const judged: Judged[] = [];
         let specialistFee = 0;
         let specialistTx: string | null = null;
+        let cacheHit = false;
 
-        if (decision.accept) {
-          // 3. pay specialist via gate (real x402)
-          const g = getGateway();
-          const bal = await g.getBalances();
-          const avail = Number(bal.gateway.formattedAvailable ?? "0");
-          if (avail < budget) await g.deposit((budget - avail + 0.5).toFixed(6));
+        const qEmbedding = await embed(question);
+        const { data: cached } = await db.rpc("match_recent_queries", {
+          query_embedding: qEmbedding,
+          similarity_threshold: 0.92,
+          max_age_minutes: 120,
+        }).then((r) => ({ data: r.data?.[0] ?? null }), () => ({ data: null }));
 
-          const gateUrl = `${BASE_URL}/api/specialist/${domain}?payTo=${spec.wallet_address}&amount=${quote.price.toFixed(6)}`;
-          const payRes = await g.pay(gateUrl, { method: "GET" });
-          specialistTx = (payRes as { transaction?: string }).transaction ?? (payRes as { data?: { transaction?: string } }).data?.transaction ?? null;
-          specialistFee = quote.price;
-          send({ type: "specialist_paid", tx: specialistTx, amount: specialistFee });
+        if (cached && Array.isArray(cached.judgments) && cached.judgments.length > 0) {
+          // CACHE HIT — reuse stored judgments, skip the specialist payment
+          cacheHit = true;
+          for (const j of cached.judgments) {
+            judged.push(j as Judged);
+            send({ type: "judgment", title: (j as Judged).title, relevance: (j as Judged).relevance, reason: (j as Judged).judge_reason ?? "reused", kept: (j as Judged).relevance >= RELEVANCE_FLOOR });
+          }
+          send({ type: "cache_hit", matched: cached.question, similarity: Number(cached.similarity?.toFixed(3) ?? 0), saved: 0, note: `matches a question judged recently (${Math.round((cached.similarity ?? 0) * 100)}% similar) — reusing its judgments, no specialist payment needed` });
+        } else {
+          // CACHE MISS — run the competing-specialists market and pay the winner
+          // 2. COMPETING SPECIALISTS — every provider in the domain quotes; router picks best value.
+          const { data: providers } = await db.from("specialists").select("*").eq("domain", domain);
+          const supply = await domainSupply(domain);
 
-          await db.rpc("increment_specialist_earnings", { sid: spec.id, amount: specialistFee }).then(() => {}, () => {});
+          if (!providers || providers.length === 0) {
+            send({ type: "error", message: `no specialist available for ${domain}` });
+            controller.close(); return;
+          }
 
-          // 4. open specialist stream with proof, relay judgments
-          const streamUrl = `${BASE_URL}/api/specialist/${domain}/stream?q=${encodeURIComponent(question)}&proof=${specialistTx ?? "paid"}`;
-          const sres = await fetch(streamUrl);
-          const reader = sres.body!.getReader();
-          const dec = new TextDecoder();
-          let buf = "";
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += dec.decode(value, { stream: true });
-            const parts = buf.split("\n\n");
-            buf = parts.pop() ?? "";
-            for (const p of parts) {
-              const line = p.replace(/^data: /, "").trim();
-              if (!line) continue;
-              const evt = JSON.parse(line);
-              if (evt.type === "judgment") {
-                judged.push({
-                  id: evt.id, contributor_id: evt.contributor_id, title: evt.title,
-                  body: evt.body, quality_score: evt.quality_score, similarity: 0,
-                  relevance: evt.relevance, judge_reason: evt.reason,
-                });
-                send({ type: "judgment", title: evt.title, relevance: evt.relevance, reason: evt.reason, kept: evt.kept });
-              } else if (evt.type === "retrieved") {
-                send({ type: "retrieved", count: evt.count });
+          const bidsList = await Promise.all(providers.map(async (p) => {
+            const qt = await quoteFor(p, supply);
+            const rep = Math.max(0.25, p.avg_relevance ?? 0.7);
+            const valueScore = qt.price / rep;
+            return { provider: p, quote: qt, rep, valueScore };
+          }));
+
+          for (const b of bidsList.sort((a, z) => a.valueScore - z.valueScore)) {
+            send({ type: "bid", label: b.provider.label, price: b.quote.price, reputation: Math.round(b.rep * 100), breakdown: b.quote.breakdown });
+          }
+
+          const winner = bidsList.reduce((best, b) => (b.valueScore < best.valueScore ? b : best), bidsList[0]);
+          const spec = winner.provider;
+          const quote = winner.quote;
+          send({ type: "quote", label: spec.label, price: quote.price, breakdown: quote.breakdown, chosenFrom: bidsList.length, reason: `best value of ${bidsList.length} bids — $${quote.price.toFixed(6)} at ${Math.round(winner.rep * 100)}% reputation` });
+
+          const decision = routerDecides(quote, budget);
+          send({ type: "decision", accept: decision.accept, threshold: decision.threshold, reason: decision.reason });
+
+          if (decision.accept) {
+            // 3. pay specialist via gate (real x402)
+            const g = getGateway();
+            const bal = await g.getBalances();
+            const avail = Number(bal.gateway.formattedAvailable ?? "0");
+            if (avail < budget) await g.deposit((budget - avail + 0.5).toFixed(6));
+
+            const gateUrl = `${BASE_URL}/api/specialist/${domain}?payTo=${spec.wallet_address}&amount=${quote.price.toFixed(6)}`;
+            const payRes = await g.pay(gateUrl, { method: "GET" });
+            specialistTx = (payRes as { transaction?: string }).transaction ?? (payRes as { data?: { transaction?: string } }).data?.transaction ?? null;
+            specialistFee = quote.price;
+            send({ type: "specialist_paid", tx: specialistTx, amount: specialistFee });
+
+            await db.rpc("increment_specialist_earnings", { sid: spec.id, amount: specialistFee }).then(() => {}, () => {});
+
+            // 4. open specialist stream with proof, relay judgments
+            const streamUrl = `${BASE_URL}/api/specialist/${domain}/stream?q=${encodeURIComponent(question)}&proof=${specialistTx ?? "paid"}`;
+            const sres = await fetch(streamUrl);
+            const reader = sres.body!.getReader();
+            const dec = new TextDecoder();
+            let buf = "";
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf += dec.decode(value, { stream: true });
+              const parts = buf.split("\n\n");
+              buf = parts.pop() ?? "";
+              for (const p of parts) {
+                const line = p.replace(/^data: /, "").trim();
+                if (!line) continue;
+                const evt = JSON.parse(line);
+                if (evt.type === "judgment") {
+                  judged.push({
+                    id: evt.id, contributor_id: evt.contributor_id, title: evt.title,
+                    body: evt.body, quality_score: evt.quality_score, similarity: 0,
+                    relevance: evt.relevance, judge_reason: evt.reason,
+                  });
+                  send({ type: "judgment", title: evt.title, relevance: evt.relevance, reason: evt.reason, kept: evt.kept });
+                } else if (evt.type === "retrieved") {
+                  send({ type: "retrieved", count: evt.count });
+                }
               }
             }
+            const avgRel = judged.length ? judged.reduce((s, p) => s + p.relevance, 0) / judged.length : 0;
+            await db.rpc("update_specialist_record", { sid: spec.id, job_avg_relevance: avgRel }).then(() => {}, () => {});
           }
-          const avgRel = judged.length ? judged.reduce((s, p) => s + p.relevance, 0) / judged.length : 0;
-          await db.rpc("update_specialist_record", { sid: spec.id, job_avg_relevance: avgRel }).then(() => {}, () => {});
         }
-
         send({ type: "judging_done" });
 
         const survivors = judged.filter((j) => j.relevance >= RELEVANCE_FLOOR).sort((a, b) => b.relevance - a.relevance);
@@ -176,7 +192,7 @@ export async function GET(req: NextRequest) {
         if (survivors.length === 0 || remaining - platformFee <= 0) {
           const refunded = Number((remaining - platformFee).toFixed(6));
           const spent = Number(specialistFee.toFixed(6));
-          await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: Math.max(0, refunded) }).eq("id", q.id);
+          await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: Math.max(0, refunded), embedding: qEmbedding }).eq("id", q.id);
           send({ type: "done", answer: "", domain, specialistFee, specialistTx, spent, platformFee, refunded: Math.max(0, refunded), paid: [] });
           controller.close(); return;
         }
@@ -252,8 +268,9 @@ export async function GET(req: NextRequest) {
         const afterFee = Number((remaining - platformFee).toFixed(6));
         send({ type: "budget", stage: "platform_fee", spent: platformFee, remaining: afterFee, note: `platform fee $${platformFee.toFixed(6)} — $${afterFee.toFixed(6)} left` });
         const refunded = Math.max(0, afterFee);
-        const spent = Number((budget - refunded).toFixed(6));
-        await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: refunded, answer }).eq("id", q.id);
+       const spent = Number((budget - refunded).toFixed(6));
+       const { error: updErr } = await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: refunded, answer, embedding: qEmbedding, judgments: cacheHit ? null : judged }).eq("id", q.id);
+        if (updErr) console.error("QUERY UPDATE FAILED:", JSON.stringify(updErr));
         send({ type: "budget", stage: "refund", spent: 0, remaining: refunded, note: `refunded $${refunded.toFixed(6)} to asker` });
 
         send({ type: "done", answer, domain, specialistFee, specialistTx, spent, platformFee, refunded, paid });

@@ -68,6 +68,7 @@ export default function Ask() {
         case "payout": setActive("pay"); lightNode("contributor"); firePulse("escrow", "contributor", "pay"); push({ kind: "pay", text: `Paid contributor`, sub: `"${evt.title}" · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
         case "con_cut": lightNode("con"); firePulse("contributor", "con", "pay"); push({ kind: "pay", text: `${evt.label} (agent) took commission`, sub: `${Math.round(evt.rate * 100)}% · $${evt.amount.toFixed(6)} · tx ${evt.tx?.slice(0,10)}…` }); break;
         case "done": lightNode("fees"); firePulse("escrow", "fees", "pay"); setDone(evt); setActive(null); setRunning(false); es.close(); break;
+        case "cache_hit": lightNode("router"); push({ kind: "route", text: "Cache hit — reusing a recent judgment", sub: evt.note }); break;
         case "error": setError(evt.message); setRunning(false); es.close(); break;
       }
     };
