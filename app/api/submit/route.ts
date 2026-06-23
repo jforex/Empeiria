@@ -24,7 +24,7 @@ function makeClaimKey(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, body } = await req.json();
+    const { title, body, claimKey: incomingClaimKey } = await req.json();
     if (!title?.trim() || !body?.trim()) {
       return NextResponse.json({ error: "title and body required" }, { status: 400 });
     }
@@ -38,28 +38,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ accepted: false, reason: verdict.reason }, { status: 200 });
     }
 
-    // 2. anonymous contributor wallet + claim key
-    const pk = generatePrivateKey();
-    const address = privateKeyToAccount(pk).address;
-    const claimKey = makeClaimKey();
-    const handle = `anon-${address.slice(2, 8).toLowerCase()}`;
+// 2. resolve contributor — returning (via claim key) or new anonymous
+    let contributor: { id: string; con_id: string | null };
+    let claimKey: string;
+    let con: { id: string; label: string; fee_rate: number } | null = null;
 
-    // assign a Con (representative agent) at random
-    const { data: cons } = await db.from("cons").select("id, label, fee_rate");
-    const con = cons && cons.length ? cons[Math.floor(Math.random() * cons.length)] : null;
+    const existingKey = incomingClaimKey?.trim().toUpperCase();
+    let resolved: { id: string; con_id: string | null } | null = null;
+    if (existingKey) {
+      const { data: existing } = await db.from("contributors")
+        .select("id, con_id, claim_key").eq("claim_key", existingKey).maybeSingle();
+      if (existing) {
+        resolved = { id: existing.id, con_id: existing.con_id };
+        claimKey = existing.claim_key;
+        if (existing.con_id) {
+          const { data: c } = await db.from("cons").select("id, label, fee_rate").eq("id", existing.con_id).single();
+          con = c ?? null;
+        }
+      }
+    }
 
-    const { data: contributor, error: cErr } = await db.from("contributors").insert({
-      handle, wallet_address: address, wallet_private_key: pk, claim_key: claimKey,
-      con_id: con?.id ?? null,
-    }).select().single();
-    if (cErr) throw cErr;
-
-    if (con) {
-      await db.rpc("increment_con_contributors", { con_id_in: con.id }).then(() => {}, () => {});
+    if (resolved) {
+      contributor = resolved;
+    } else {
+      // new anonymous contributor — fresh wallet + claim key + random Con
+      const pk = generatePrivateKey();
+      const address = privateKeyToAccount(pk).address;
+      claimKey = makeClaimKey();
+      const handle = `anon-${address.slice(2, 8).toLowerCase()}`;
+      const { data: cons } = await db.from("cons").select("id, label, fee_rate");
+      con = cons && cons.length ? cons[Math.floor(Math.random() * cons.length)] : null;
+      const { data: created, error: cErr } = await db.from("contributors").insert({
+        handle, wallet_address: address, wallet_private_key: pk, claim_key: claimKey,
+        con_id: con?.id ?? null,
+      }).select().single();
+      if (cErr) throw cErr;
+      contributor = { id: created.id, con_id: created.con_id };
+      if (con) {
+        await db.rpc("increment_con_contributors", { con_id_in: con.id }).then(() => {}, () => {});
+      }
     }
 
     // 3. embed + store the experience
-const embedding = await embed(`${verdict.suggestedTitle}\n${body}`);
+    const embedding = await embed(`${verdict.suggestedTitle}\n${body}`);
     const { data: exp, error: eErr } = await db.from("experiences").insert({
       contributor_id: contributor.id,
       title: verdict.suggestedTitle,

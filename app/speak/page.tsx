@@ -38,12 +38,13 @@ export default function Speak() {
   const startRef = useRef<number>(0);
 
   const [error, setError] = useState<string | null>(null);
+  const [returningKey, setReturningKey] = useState("");
 
   async function submitText() {
     if (!title.trim() || body.trim().length < 120) return;
     setTStage("judging"); setError(null); setTResult(null);
     try {
-      const res = await fetch("/api/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body }) });
+      const res = await fetch("/api/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body, claimKey: returningKey.trim() || undefined }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
       setTimeout(() => { setTResult(data); setTStage("result"); }, 600);
@@ -96,7 +97,7 @@ export default function Speak() {
       setVStatus("The Fees Agent is paying the Transcription Agent to convert your voice to text…");
       const res = await fetch("/api/submit-audio", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audioUrl: pub.publicUrl, title: "", durationSec: audioDuration }),
+       body: JSON.stringify({ audioUrl: pub.publicUrl, title: "", durationSec: audioDuration, claimKey: returningKey.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
@@ -129,9 +130,13 @@ export default function Speak() {
         <div className="inner">
           {tStage !== "result" && vStage !== "result" && (
             <>
-              <div className="modes">
+             <div className="modes">
                 <button className={`mode ${mode === "text" ? "mode-on" : ""}`} onClick={() => setMode("text")}>Write it</button>
                 <button className={`mode ${mode === "voice" ? "mode-on" : ""}`} onClick={() => setMode("voice")}>Speak it</button>
+              </div>
+              <div className="returning">
+                <span className="returning-label">Shared before?</span>
+                <input className="returning-input" placeholder="Paste your claim key (EMP-XXXX-XXXX) to keep earnings together" value={returningKey} onChange={(e) => setReturningKey(e.target.value)} />
               </div>
 
               {mode === "text" ? (
@@ -338,6 +343,11 @@ body { margin: 0; background: #FBF7F0; }
 .hero h1 { font-family: Newsreader, Georgia, serif; font-size: clamp(2.2rem,5vw,3.4rem); line-height: 1.1; font-weight: 500; margin: 0 0 1.5rem; letter-spacing: -0.02em; }
 .lede { font-size: clamp(1.1rem,2vw,1.3rem); line-height: 1.6; color: #3a3446; max-width: 54ch; margin: 0; }
 .modes { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+.returning { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.returning-label { font-size: 0.82rem; color: #8a7d62; font-weight: 600; white-space: nowrap; }
+.returning-input { flex: 1; min-width: 240px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-family: ui-monospace, monospace; font-size: 0.85rem; padding: 0.55rem 0.8rem; outline: none; color: var(--ink); }
+.returning-input:focus { border-color: var(--gold); }
+.returning-input::placeholder { font-family: ui-sans-serif, system-ui, sans-serif; color: #b3a890; }
 .mode { padding: 0.6rem 1.3rem; border-radius: 999px; border: 1.5px solid var(--line); background: transparent; font-size: 0.92rem; font-weight: 600; cursor: pointer; color: #8a8073; transition: all 0.15s; }
 .mode-on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .form, .verdict { position: relative; border-radius: 18px; }
