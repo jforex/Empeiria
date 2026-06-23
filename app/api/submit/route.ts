@@ -39,18 +39,19 @@ export async function POST(req: NextRequest) {
     }
 
 // 2. resolve contributor — returning (via claim key) or new anonymous
-    let contributor: { id: string; con_id: string | null };
-    let claimKey: string;
+    let contributor: { id: string; con_id: string | null } = { id: "", con_id: null };
+    let claimKey = "";
     let con: { id: string; label: string; fee_rate: number } | null = null;
-
+    let contributorAddress = "";
     const existingKey = incomingClaimKey?.trim().toUpperCase();
     let resolved: { id: string; con_id: string | null } | null = null;
     if (existingKey) {
-      const { data: existing } = await db.from("contributors")
-        .select("id, con_id, claim_key").eq("claim_key", existingKey).maybeSingle();
+     const { data: existing } = await db.from("contributors")
+        .select("id, con_id, claim_key, wallet_address").eq("claim_key", existingKey).maybeSingle();
       if (existing) {
         resolved = { id: existing.id, con_id: existing.con_id };
         claimKey = existing.claim_key;
+        contributorAddress = existing.wallet_address;
         if (existing.con_id) {
           const { data: c } = await db.from("cons").select("id, label, fee_rate").eq("id", existing.con_id).single();
           con = c ?? null;
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
       // new anonymous contributor — fresh wallet + claim key + random Con
       const pk = generatePrivateKey();
       const address = privateKeyToAccount(pk).address;
+      contributorAddress = address;
       claimKey = makeClaimKey();
       const handle = `anon-${address.slice(2, 8).toLowerCase()}`;
       const { data: cons } = await db.from("cons").select("id, label, fee_rate");
@@ -96,10 +98,10 @@ export async function POST(req: NextRequest) {
     // anchor provenance on-chain (platform attests contributor + content hash)
     let anchor: { storyHash: string; txHash: string } | null = null;
     try {
-      const a = await anchorContribution(body.trim(), address);
+      const a = await anchorContribution(body.trim(), contributorAddress);
       anchor = { storyHash: a.storyHash, txHash: a.txHash };
       await db.from("experiences").update({
-        story_hash: a.storyHash, anchor_tx: a.txHash, anchored_contributor: address,
+        story_hash: a.storyHash, anchor_tx: a.txHash, anchored_contributor: contributorAddress,
       }).eq("id", exp.id);
     } catch { /* anchoring is best-effort; submission still succeeds */ }
 
