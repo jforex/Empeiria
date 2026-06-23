@@ -20,7 +20,9 @@ export default function Create() {
   const [category, setCategory] = useState("startups");
   const [agentLabel, setAgentLabel] = useState("");
   const [tagline, setTagline] = useState("");
-  const [creator, setCreator] = useState<{ creatorId: string; handle: string; name: string; agentLabel: string } | null>(null);
+ const [creator, setCreator] = useState<{ creatorId: string; handle: string; name: string; agentLabel: string; accessKey?: string } | null>(null);
+  const [returnKey, setReturnKey] = useState("");
+  const [returning, setReturning] = useState(false);
 
   // knowledge
   const [contentMode, setContentMode] = useState<"text" | "audio">("text");
@@ -44,6 +46,23 @@ export default function Create() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "signup failed");
       setCreator(data);
+      setStep(2);
+ } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function accessReturn() {
+    if (returnKey.trim().length < 4) return;
+    setBusy(true); setError(null);
+    try {
+      const res = await fetch("/api/creator/access", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessKey: returnKey }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "access failed");
+      setCreator({ creatorId: data.creatorId, handle: data.handle, name: data.name, agentLabel: data.agentLabel });
+      setReturning(true);
       setStep(2);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
@@ -120,14 +139,18 @@ export default function Create() {
                   </div>
                   <input className="f-line" placeholder="Agent name (optional, e.g. Startup Mentor Agent)" value={agentLabel} onChange={(e) => setAgentLabel(e.target.value)} maxLength={60} />
                   <input className="f-line" placeholder="One-line tagline (optional)" value={tagline} onChange={(e) => setTagline(e.target.value)} maxLength={100} />
-                  {error && <div className="err">{error}</div>}
+               {error && <div className="err">{error}</div>}
                   <button className="btn btn-solid" onClick={createProfile} disabled={busy || !name.trim() || handle.length < 3}>
                     {busy ? "Creating…" : "Create my agent →"}
                   </button>
+                  <div className="return-row">
+                    <span className="return-label">Already have an agent?</span>
+                    <input className="return-input" placeholder="Paste access key (EMP-XXXX-XXXX)" value={returnKey} onChange={(e) => setReturnKey(e.target.value)} />
+                    <button className="return-btn" onClick={accessReturn} disabled={busy || returnKey.trim().length < 4}>Load →</button>
+                  </div>
                 </div>
               </motion.div>
             )}
-
             {step === 2 && creator && (
               <motion.div key="s2" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <span className="lit-border lit-gold" aria-hidden />
@@ -175,12 +198,24 @@ export default function Create() {
                   <div className="eyebrow">your agent is live</div>
                   <h2>{creator.agentLabel}</h2>
                   <p className="live-sub">{totalChunks} knowledge chunks · ready to earn</p>
-                  <div className="share-box">
+              <div className="share-box">
                     <div className="share-label">anyone can now ask your agent directly:</div>
                     <code className="share-code">@{creator.handle} &lt;their question&gt;</code>
                   </div>
+                  {creator.accessKey && (
+                    <div className="key-box">
+                      <div className="key-label">⚠ save your access key — you'll need it to add knowledge or withdraw later</div>
+                      <code className="key-code">{creator.accessKey}</code>
+                    </div>
+                  )}
+                  {creator.accessKey && (
+                    <div className="key-box">
+                      <div className="key-label">⚠ save your access key — you'll need it to add knowledge or withdraw earnings later</div>
+                      <code className="key-code">{creator.accessKey}</code>
+                    </div>
+                  )}
                   <div className="row2">
-                    <a className="btn btn-solid" href={`/ask?q=${encodeURIComponent("@" + creator.handle + " ")}`}>Try asking your agent →</a>
+                   <a className="btn btn-solid" href={`/marketplace`}>Try asking your agent →</a>
                     <button className="btn btn-ghost" onClick={() => setStep(2)}>Add more knowledge</button>
                   </div>
                 </div>
@@ -254,5 +289,14 @@ body { margin: 0; background: #FBF7F0; }
 .live-in .row2 { justify-content: center; }
 .ft { background: var(--ink); padding: 2rem clamp(1.5rem,5vw,5rem); }
 .ft-in { display: flex; justify-content: space-between; font-size: 0.82rem; color: #b8b2c2; max-width: 680px; margin: 0 auto; }
+.return-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.4rem; padding-top: 1.4rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.return-label { font-size: 0.82rem; color: #8a7d62; font-weight: 600; white-space: nowrap; }
+.return-input { flex: 1; min-width: 180px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-family: ui-monospace, monospace; font-size: 0.82rem; padding: 0.5rem 0.7rem; outline: none; color: var(--ink); }
+.return-input:focus { border-color: var(--gold); }
+.return-btn { padding: 0.5rem 1rem; border-radius: 8px; border: 1.5px solid var(--ink); background: transparent; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--ink); }
+.return-btn:disabled { opacity: 0.4; cursor: default; }
+.key-box { background: #fdf6e3; border: 1px solid var(--gold); border-radius: 12px; padding: 1.1rem; margin-bottom: 1.6rem; }
+.key-label { font-size: 0.78rem; color: #8a6d1f; margin-bottom: 0.5rem; }
+.key-code { font-family: ui-monospace, monospace; font-size: 1.15rem; color: var(--ink); font-weight: 700; letter-spacing: 0.05em; }
 @media (prefers-reduced-motion: reduce) { .lit-border { animation: none; } }
 `;

@@ -32,9 +32,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `@${cleanHandle} is taken — pick another handle` }, { status: 409 });
     }
 
-    const pk = generatePrivateKey();
+   const pk = generatePrivateKey();
     const address = privateKeyToAccount(pk).address;
-
+    const rand = () => Math.random().toString(16).slice(2, 6).toUpperCase();
+    const accessKey = `EMP-${rand()}-${rand()}`;
     const { data: creator, error } = await db.from("creators").insert({
       handle: cleanHandle,
       name: name.trim(),
@@ -44,16 +45,18 @@ export async function POST(req: NextRequest) {
       agent_tagline: agentTagline?.trim() || null,
       wallet_address: address,
       wallet_private_key: pk,
+      access_key: accessKey,
     }).select("id, handle, name, agent_label").single();
     if (error) throw error;
 
-    return NextResponse.json({
+ return NextResponse.json({
       ok: true,
       creatorId: creator.id,
       handle: creator.handle,
       name: creator.name,
       agentLabel: creator.agent_label,
       walletAddress: address,
+      accessKey,
     });
   } catch (err) {
     return NextResponse.json({ error: "signup failed", message: (err as Error).message }, { status: 500 });
