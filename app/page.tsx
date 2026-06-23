@@ -1,12 +1,11 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import EconomyMap from "./components/EconomyMap";
 import { motion } from "framer-motion";
 
-type Ledger = {
-  stats: { contributors: number; experiences: number; queries: number; totalPaid: number };
-  recent: { handle: string; title: string; amount: number }[];
+type Creator = {
+  handle: string; name: string; agentLabel: string; tagline: string | null;
+  category: string; earned: number; chunks: number;
 };
 
 const fadeUp = {
@@ -18,136 +17,115 @@ const fadeUp = {
 };
 
 export default function Landing() {
-  const [ledger, setLedger] = useState<Ledger | null>(null);
+  const [creators, setCreators] = useState<Creator[]>([]);
+
   useEffect(() => {
-    fetch("/api/ledger").then((r) => { if (r.ok) r.json().then(setLedger); }).catch(() => {});
+    fetch("/api/creators").then((r) => r.json()).then((d) => { if (d.ok) setCreators(d.creators); }).catch(() => {});
   }, []);
 
-  const hasPayouts = ledger && ledger.recent.length > 0;
+  const totalEarned = creators.reduce((s, c) => s + c.earned, 0);
 
   return (
     <div className="pg">
       <style>{css}</style>
-
-      {/* ===== HERO: full-bleed image ===== */}
       <section className="hero">
         <div className="hero-img" />
         <div className="hero-veil" />
-
         <header className="hd">
           <a href="/" className="logo"><img src="/empeiria-logo.png" alt="" className="logo-img" />empeiria</a>
           <nav className="nav">
-            <a href="/ask">Ask</a>
-            <a href="/speak">Speak</a>
+            <a href="/marketplace">Ask</a>
+            <a href="/create">Create</a>
           </nav>
         </header>
-
-       <div className="hero-body">
+        <div className="hero-body">
           <motion.div className="hero-eyebrow" initial="hidden" animate="show" custom={0} variants={fadeUp}>
-            An autonomous knowledge marketplace · agents route, judge &amp; settle in USDC on Arc via x402
+            A knowledge marketplace · creators paid per use in USDC on Arc via x402
           </motion.div>
           <motion.h1 initial="hidden" animate="show" custom={0} variants={fadeUp}>
-            Lived experience,<br />finally worth something.
+            What you know,<br />finally worth something.
           </motion.h1>
           <motion.p className="lede" initial="hidden" animate="show" custom={1} variants={fadeUp}>
-            The hardest things you've come through are worth real money to someone
-            facing them now. Empeiria pays the people who've been there — the moment
-            their experience helps.
+            Creators turn their writing, talks, and notes into AI knowledge agents.
+            Ask a question and the best creators answer — you pay only for the
+            knowledge you use, and they earn the moment it helps.
           </motion.p>
-
           <motion.div className="doors" initial="hidden" animate="show" custom={2} variants={fadeUp}>
             <div className="door lit">
               <span className="lit-border" aria-hidden />
               <div className="door-in">
-                <div className="eyebrow">if you're struggling</div>
-                <h2>Ask someone who survived it.</h2>
-                <p>An agent reads real accounts from people who've lived it, and pays only the ones it actually uses.</p>
-                <a href="/ask" className="btn btn-solid">Ask a question →</a>
+                <div className="eyebrow">if you want answers</div>
+                <h2>Ask the marketplace.</h2>
+                <p>Real creator expertise, blended into one answer. Pay a few cents — split across the creators who helped. Or tag @handle to ask one directly.</p>
+                <a href="/marketplace" className="btn btn-solid">Ask a question →</a>
               </div>
             </div>
             <div className="door lit">
               <span className="lit-border lit-gold" aria-hidden />
               <div className="door-in">
-                <div className="eyebrow">if you've been there</div>
-                <h2>Get paid for what you learned.</h2>
-                <p>Share your story as text, voice, or video. Stay anonymous, earn every time it helps a stranger.</p>
-                <a href="/speak" className="btn btn-ghost">Speak your experience →</a>
+                <div className="eyebrow">if you have expertise</div>
+                <h2>Turn it into a paid agent.</h2>
+                <p>Upload your content — text or audio. Empeiria builds it into a knowledge agent that earns every time someone learns from it.</p>
+                <a href="/create" className="btn btn-ghost">Create your agent →</a>
               </div>
             </div>
           </motion.div>
         </div>
-
         <div className="scroll-cue" aria-hidden>scroll</div>
       </section>
 
-      {/* ===== PROOF ===== */}
       <section className="band">
         <motion.div className="inner"
           initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
-          <div className="stats">
-            <div className="stat"><span className="sn">${(ledger?.stats.totalPaid ?? 0).toFixed(4)}</span><span className="sl">paid to contributors</span></div>
-            <div className="stat"><span className="sn">{ledger?.stats.contributors ?? 0}</span><span className="sl">anonymous voices</span></div>
-            <div className="stat"><span className="sn">{ledger?.stats.queries ?? 0}</span><span className="sl">questions answered</span></div>
+          <div className="grid-head">
+            <div>
+              <div className="eyebrow">the creators · live</div>
+              <h3 className="grid-title">Knowledge agents earning right now.</h3>
+            </div>
+            <div className="grid-stat">
+              <span className="gs-num">${totalEarned.toFixed(4)}</span>
+              <span className="gs-label">paid to creators</span>
+            </div>
           </div>
-          <div className="feed">
-            <div className="eyebrow">recent payouts — real, anonymous, on-chain</div>
-            {hasPayouts ? (
-              ledger!.recent.slice(0, 5).map((r, i) => (
-                <motion.div key={i} className="frow"
-                  initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }} transition={{ delay: i * 0.07 }}>
-                  <span className="fhandle">{r.handle}</span>
-                  <span className="ftitle">{r.title}</span>
-                  <span className="famt">+${r.amount.toFixed(6)}</span>
-                </motion.div>
-              ))
-            ) : (
-              <div className="empty">No payouts yet. When someone asks and an experience helps, the payment appears here — live.</div>
-            )}
+          {creators.length > 0 ? (
+            <div className="cgrid">
+              {creators.map((c, i) => (
+                <motion.a key={c.handle} href={`/creator/${c.handle}`} className="ccard"
+                  initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
+                  <div className="cc-cat">{c.category}</div>
+                  <div className="cc-agent">{c.agentLabel}</div>
+                  <div className="cc-by">by {c.name} · @{c.handle}</div>
+                  {c.tagline && <div className="cc-tag">{c.tagline}</div>}
+                  <div className="cc-foot">
+                    <span className="cc-earned">${c.earned.toFixed(4)} earned</span>
+                    <span className="cc-chunks">{c.chunks} chunk{c.chunks === 1 ? "" : "s"}</span>
+                  </div>
+                </motion.a>
+              ))}
+            </div>
+          ) : (
+            <div className="empty">No creators yet. <a href="/create" style={{ color: "var(--gold)", fontWeight: 600 }}>Be the first to create an agent →</a></div>
+          )}
+        </motion.div>
+      </section>
+
+      <section className="band band-alt">
+        <motion.div className="inner"
+          initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
+          <div className="eyebrow">how it works — knowledge becomes a paid agent</div>
+          <p className="how-lede">Creators own their knowledge; the marketplace rents it, one answer at a time. Agents retrieve, synthesize, and settle payments in USDC on Arc via x402 micropayments — every step a real on-chain decision.</p>
+          <div className="how-grid">
+            <div className="how-card"><div className="how-num">01</div><div className="how-title">Creators build agents</div><p>A creator uploads their writing, talks, or notes. Empeiria chunks and embeds it into a knowledge agent that represents their expertise.</p></div>
+            <div className="how-card"><div className="how-num">02</div><div className="how-title">You ask, with a budget</div><p>Pick a tier — simple, detailed, or analysis. That price is held and spent down as creators' knowledge is used to answer you.</p></div>
+            <div className="how-card"><div className="how-num">03</div><div className="how-title">The mesh retrieves expertise</div><p>Across all creators, the most relevant knowledge is found and blended into one answer — or tag @handle to ask a single creator directly.</p></div>
+            <div className="how-card"><div className="how-num">04</div><div className="how-title">Creators are paid per use</div><p>Each creator whose knowledge shaped the answer earns a share, proportional to how much it helped. Settled instantly via x402. Unused budget is refunded.</p></div>
+            <div className="how-card"><div className="how-num">05</div><div className="how-title">Transparent by default</div><p>Every answer shows exactly who contributed, what percentage, and what they earned — with on-chain transaction references.</p></div>
+            <div className="how-card"><div className="how-num">06</div><div className="how-title">Knowledge stays owned</div><p>Creators never transfer their knowledge — it's rented, one response at a time. Each use generates revenue, forever.</p></div>
           </div>
         </motion.div>
       </section>
 
-{/* ===== HOW ===== */}
-      <section className="band band-alt">
-        <motion.div className="inner"
-          initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
-          <div className="eyebrow">how it works — an economy of autonomous agents</div>
-          <p className="how-lede">No human is in the loop. Specialized agents route questions, compete for the work, judge relevance, and settle payments in USDC on Arc via x402 micropayments. Every step below is a real on-chain decision.</p>
-          <div className="how-grid">
-            <div className="how-card">
-              <div className="how-num">01</div>
-              <div className="how-title">Escrow holds the budget</div>
-              <p>A question arrives with a USDC budget cap. The amount is held in escrow and spent down, step by step, as agents do the work.</p>
-            </div>
-            <div className="how-card">
-              <div className="how-num">02</div>
-              <div className="how-title">The Router runs a market</div>
-              <p>A Router agent classifies the question, then competing Specialist agents bid with their own prices and reputations. The Router pays the best value — settled via x402.</p>
-            </div>
-            <div className="how-card">
-              <div className="how-num">03</div>
-              <div className="how-title">The Specialist judges — or reuses</div>
-              <p>The paid Specialist judges each experience for relevance. If a near-identical question was judged recently, it reuses that work and refunds the saving — caching real money.</p>
-            </div>
-            <div className="how-card">
-              <div className="how-num">04</div>
-              <div className="how-title">Contributors are paid per use</div>
-              <p>Each experience that shaped the answer earns its author a share, proportional to how much it helped. Representative "Con" agents take a referral cut. Unused budget is refunded.</p>
-            </div>
-            <div className="how-card">
-              <div className="how-num">05</div>
-              <div className="how-title">Voice becomes value</div>
-              <p>Contribute by speaking. A Transcription agent is paid autonomously — priced on length, congestion and reputation, with a Fees agent refusing any overcharge — then your words enter the pool.</p>
-            </div>
-            <div className="how-card">
-              <div className="how-num">06</div>
-              <div className="how-title">Anchored on-chain</div>
-              <p>Every accepted experience is anchored on Arc — a permanent cryptographic link between an anonymous contributor and their words. Provenance without identity.</p>
-            </div>
-          </div>
-        </motion.div>
-      </section>
       <section className="band">
         <div className="inner">
           <div className="how-map-label eyebrow">the whole economy, live</div>
@@ -164,7 +142,6 @@ export default function Landing() {
     </div>
   );
 }
-
 const css = `
 * { box-sizing: border-box; }
 body { margin: 0; background: #FBF7F0; }
@@ -255,5 +232,23 @@ body { margin: 0; background: #FBF7F0; }
   .ft-in { flex-direction: column; gap: 0.5rem; }
   .frow { grid-template-columns: 5rem 1fr auto; }
 }
+
+/* ===== CREATOR GRID ===== */
+.grid-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.grid-title { font-family: Newsreader, Georgia, serif; font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 500; margin: 0.4rem 0 0; line-height: 1.1; }
+.grid-stat { display: flex; flex-direction: column; align-items: flex-end; }
+.gs-num { font-family: ui-monospace, monospace; font-size: 1.5rem; font-weight: 700; color: var(--gold); }
+.gs-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8073; }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.ccard { display: flex; flex-direction: column; gap: 0.4rem; padding: 1.4rem; background: #fff; border: 1px solid var(--line); border-radius: 14px; text-decoration: none; color: var(--ink); transition: transform 0.14s, box-shadow 0.14s; }
+.ccard:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(26,26,46,0.08); border-color: var(--gold); }
+.cc-cat { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); font-weight: 600; }
+.cc-agent { font-family: Newsreader, Georgia, serif; font-size: 1.25rem; font-weight: 500; line-height: 1.15; }
+.cc-by { font-size: 0.82rem; color: #8a8073; }
+.cc-tag { font-size: 0.9rem; color: #4a4456; line-height: 1.45; margin-top: 0.2rem; }
+.cc-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+.cc-earned { font-family: ui-monospace, monospace; font-size: 0.85rem; font-weight: 700; color: var(--gold); }
+.cc-chunks { font-family: ui-monospace, monospace; font-size: 0.74rem; color: #8a8073; }
+.empty { color: #8a8073; font-size: 1.02rem; padding: 1.5rem 0; }
 @media (prefers-reduced-motion: reduce) { .lit-border { animation: none; } }
 `;
