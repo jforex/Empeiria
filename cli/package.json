@@ -3,13 +3,15 @@
   "version": "1.0.0",
   "description": "Ask the Empeiria knowledge marketplace from your terminal — creators get paid per use, on-chain.",
   "type": "module",
-  "bin": {
-    "empeiria": "./index.js"
+"bin": {
+    "empeiria": "index.js"
   },
   "scripts": {
     "start": "node index.js"
   },
   "keywords": ["empeiria", "x402", "arc", "knowledge", "marketplace", "ai-agents"],
-  "license": "MIT",
+"license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/jforex/Empeiria.git" },
+  "homepage": "https://empeiria.vercel.app",
   "engines": { "node": ">=18" }
 }
