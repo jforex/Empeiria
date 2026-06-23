@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 type Creator = {
   handle: string; name: string; agentLabel: string; tagline: string | null;
-  category: string; earned: number; chunks: number;
+  category: string; earned: number; chunks: number; avatarUrl: string | null;
 };
 
 const fadeUp = {
@@ -93,7 +93,12 @@ export default function Landing() {
                 <motion.a key={c.handle} href={`/creator/${c.handle}`} className="ccard"
                   initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
-                  <div className="cc-cat">{c.category}</div>
+                 <div className="cc-top">
+                    {c.avatarUrl
+                      ? <img src={c.avatarUrl} alt="" className="cc-avatar" />
+                      : <span className="cc-avatar cc-avatar-ph">{c.name.charAt(0).toUpperCase()}</span>}
+                    <div className="cc-cat">{c.category}</div>
+                  </div>
                   <div className="cc-agent">{c.agentLabel}</div>
                   <div className="cc-by">by {c.name} · @{c.handle}</div>
                   {c.tagline && <div className="cc-tag">{c.tagline}</div>}
@@ -242,6 +247,9 @@ body { margin: 0; background: #FBF7F0; }
 .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
 .ccard { display: flex; flex-direction: column; gap: 0.4rem; padding: 1.4rem; background: #fff; border: 1px solid var(--line); border-radius: 14px; text-decoration: none; color: var(--ink); transition: transform 0.14s, box-shadow 0.14s; }
 .ccard:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(26,26,46,0.08); border-color: var(--gold); }
+.cc-top { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.2rem; }
+.cc-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.cc-avatar-ph { display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--paper); font-family: Newsreader, Georgia, serif; font-size: 1.1rem; font-weight: 500; }
 .cc-cat { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); font-weight: 600; }
 .cc-agent { font-family: Newsreader, Georgia, serif; font-size: 1.25rem; font-weight: 500; line-height: 1.15; }
 .cc-by { font-size: 0.82rem; color: #8a8073; }

@@ -20,6 +20,8 @@ export default function Create() {
   const [category, setCategory] = useState("startups");
   const [agentLabel, setAgentLabel] = useState("");
   const [tagline, setTagline] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarBusy, setAvatarBusy] = useState(false);
  const [creator, setCreator] = useState<{ creatorId: string; handle: string; name: string; agentLabel: string; accessKey?: string } | null>(null);
   const [returnKey, setReturnKey] = useState("");
   const [returning, setReturning] = useState(false);
@@ -35,13 +37,26 @@ export default function Create() {
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  async function uploadAvatar(file: File) {
+    setAvatarBusy(true); setError(null);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `creator-avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("submissions").upload(path, file, { contentType: file.type });
+      if (upErr) throw new Error(`upload failed: ${upErr.message}`);
+      const { data: pub } = supabase.storage.from("submissions").getPublicUrl(path);
+      setAvatarUrl(pub.publicUrl);
+    } catch (e) { setError((e as Error).message); }
+    finally { setAvatarBusy(false); }
+  }
+
   async function createProfile() {
     if (!name.trim() || handle.trim().length < 3) return;
     setBusy(true); setError(null);
     try {
       const res = await fetch("/api/creator/signup", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, handle, category, agentLabel, agentTagline: tagline }),
+        body: JSON.stringify({ name, handle, category, agentLabel, agentTagline: tagline, avatarUrl }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "signup failed");
@@ -126,7 +141,14 @@ export default function Create() {
             {step === 1 && (
               <motion.div key="s1" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <span className="lit-border lit-gold" aria-hidden />
-                <div className="card-in">
+               <div className="card-in">
+                  <div className="avatar-row">
+                    <label className="avatar-pick">
+                      {avatarUrl ? <img src={avatarUrl} alt="" className="avatar-img" /> : <span className="avatar-ph">{avatarBusy ? "…" : "+"}</span>}
+                      <input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAvatar(f); }} />
+                    </label>
+                    <div className="avatar-hint">Add a photo<br /><span>your agent carries it</span></div>
+                  </div>
                   <input className="f-line" placeholder="Your name (e.g. Jane Doe)" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
                   <div className="handle-row">
                     <span className="at">@</span>
@@ -289,7 +311,14 @@ body { margin: 0; background: #FBF7F0; }
 .live-in .row2 { justify-content: center; }
 .ft { background: var(--ink); padding: 2rem clamp(1.5rem,5vw,5rem); }
 .ft-in { display: flex; justify-content: space-between; font-size: 0.82rem; color: #b8b2c2; max-width: 680px; margin: 0 auto; }
-.return-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.4rem; padding-top: 1.4rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.avatar-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.6rem; }
+.avatar-pick { width: 72px; height: 72px; border-radius: 50%; border: 2px dashed var(--line); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; background: #fff; flex-shrink: 0; transition: border-color 0.15s; }
+.avatar-pick:hover { border-color: var(--gold); }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-ph { font-size: 1.8rem; color: #b3a890; font-weight: 300; }
+.avatar-hint { font-size: 0.9rem; color: var(--ink); font-weight: 600; line-height: 1.3; }
+.avatar-hint span { font-weight: 400; color: #8a8073; font-size: 0.8rem; }
+.return-row { display: flex; align-items: center;
 .return-label { font-size: 0.82rem; color: #8a7d62; font-weight: 600; white-space: nowrap; }
 .return-input { flex: 1; min-width: 180px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-family: ui-monospace, monospace; font-size: 0.82rem; padding: 0.5rem 0.7rem; outline: none; color: var(--ink); }
 .return-input:focus { border-color: var(--gold); }

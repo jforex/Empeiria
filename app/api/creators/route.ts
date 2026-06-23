@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   try {
     const category = new URL(req.url).searchParams.get("category");
     let query = db.from("creators")
-      .select("id, handle, name, agent_label, agent_tagline, category, total_earned_usdc")
+     .select("id, handle, name, agent_label, agent_tagline, category, total_earned_usdc, avatar_url")
       .order("total_earned_usdc", { ascending: false })
       .limit(60);
     if (category && category !== "all") query = query.eq("category", category);
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     const creators = (data ?? []).map((c) => ({
       handle: c.handle, name: c.name, agentLabel: c.agent_label,
-      tagline: c.agent_tagline, category: c.category,
+      tagline: c.agent_tagline, category: c.category, avatarUrl: c.avatar_url,
       earned: Number(c.total_earned_usdc ?? 0), chunks: counts[c.id] ?? 0,
     }));
 

@@ -15,7 +15,7 @@ const db = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, handle, category, bio, agentLabel, agentTagline } = await req.json();
+    const { name, handle, category, bio, agentLabel, agentTagline, avatarUrl } = await req.json();
 
     if (!name?.trim() || !handle?.trim()) {
       return NextResponse.json({ error: "name and handle required" }, { status: 400 });
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       bio: bio?.trim() || null,
       agent_label: agentLabel?.trim() || `${name.trim()}'s Agent`,
       agent_tagline: agentTagline?.trim() || null,
+      avatar_url: avatarUrl?.trim() || null,
       wallet_address: address,
       wallet_private_key: pk,
       access_key: accessKey,

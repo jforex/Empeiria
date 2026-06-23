@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Tier = "simple" | "detailed" | "analysis";
@@ -26,7 +26,12 @@ export default function Marketplace() {
   const [answer, setAnswer] = useState<string>("");
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [done, setDone] = useState<Done | null>(null);
-  const [error, setError] = useState<string | null>(null);
+const [error, setError] = useState<string | null>(null);
+  const [creators, setCreators] = useState<{ handle: string; name: string; agentLabel: string; category: string; avatarUrl: string | null }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/creators").then((r) => r.json()).then((d) => { if (d.ok) setCreators(d.creators); }).catch(() => {});
+  }, []);
   const esRef = useRef<EventSource | null>(null);
 
   function reset() {
@@ -81,6 +86,24 @@ export default function Marketplace() {
             <div className="ask-card lit">
               <span className="lit-border lit-gold" aria-hidden />
               <div className="ask-in">
+               {creators.length > 0 && (
+                  <div className="gallery">
+                    <div className="gallery-label">ask a creator directly — tap one</div>
+                    <div className="marquee">
+                      <div className="marquee-track">
+                        {[...creators, ...creators].map((c, i) => (
+                          <button key={i} className="gcard" onClick={() => setQuestion(`@${c.handle} `)} disabled={running} type="button">
+                            {c.avatarUrl
+                              ? <img src={c.avatarUrl} alt="" className="gc-avatar" />
+                              : <span className="gc-avatar gc-avatar-ph">{c.name.charAt(0).toUpperCase()}</span>}
+                            <span className="gc-name">{c.name}</span>
+                            <span className="gc-cat">{c.category}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <textarea className="q" rows={3} placeholder="Ask anything — or @handle to ask one creator (e.g. @startupmentor how do I price my SaaS?)" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={running} />
                 <div className="tiers">
                   {TIERS.map((t) => (
@@ -180,7 +203,19 @@ body { margin: 0; background: #FBF7F0; }
 .lit-border { position: absolute; inset: 0; border-radius: 18px; padding: 2px; z-index: 0; background: conic-gradient(from var(--ang,0deg), transparent 0%, var(--gold) 12%, transparent 30%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: spin 4.5s linear infinite; }
 @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 @keyframes spin { to { --ang: 360deg; } }
-.q { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 1.08rem; line-height: 1.6; font-family: ui-sans-serif, system-ui, sans-serif; padding: 1rem; outline: none; resize: vertical; color: var(--ink); margin-bottom: 1.2rem; }
+.gallery { margin-bottom: 1.4rem; }
+.gallery-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #8a7d62; font-weight: 600; margin-bottom: 0.7rem; }
+.marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+.marquee-track { display: flex; gap: 0.7rem; width: max-content; animation: scroll 38s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes scroll { to { transform: translateX(-50%); } }
+.gcard { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; padding: 0.9rem 1rem; min-width: 110px; background: var(--paper); border: 1px solid var(--line); border-radius: 14px; cursor: pointer; transition: transform 0.12s, border-color 0.12s; }
+.gcard:hover { transform: translateY(-3px); border-color: var(--gold); }
+.gc-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
+.gc-avatar-ph { display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--paper); font-family: Newsreader, Georgia, serif; font-size: 1.3rem; }
+.gc-name { font-size: 0.85rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.gc-cat { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold); font-weight: 600; }
+.q { width: 100%; border: 1px solid var(--line);
 .q:focus { border-color: var(--gold); }
 .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; margin-bottom: 1.3rem; }
 .tier { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.9rem; border-radius: 12px; border: 1.5px solid var(--line); background: var(--paper); cursor: pointer; text-align: left; transition: all 0.15s; }
