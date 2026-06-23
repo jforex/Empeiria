@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import EconomyMap from "../components/EconomyMap";
 
 type Tier = "simple" | "detailed" | "analysis";
 const TIERS: { id: Tier; label: string; price: number; desc: string }[] = [
@@ -27,18 +28,26 @@ export default function Marketplace() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [done, setDone] = useState<Done | null>(null);
 const [error, setError] = useState<string | null>(null);
-  const [creators, setCreators] = useState<{ handle: string; name: string; agentLabel: string; category: string; avatarUrl: string | null }[]>([]);
+const [creators, setCreators] = useState<{ handle: string; name: string; agentLabel: string; category: string; avatarUrl: string | null }[]>([]);
+  const [activeNodes, setActiveNodes] = useState<Set<string>>(new Set());
+  const [pulses, setPulses] = useState<{ id: number; from: string; to: string; kind: "pay" | "data" }[]>([]);
+  const lightNode = (...ids: string[]) => setActiveNodes((prev) => { const n = new Set(prev); ids.forEach((i) => n.add(i)); return n; });
+  const firePulse = (from: string, to: string, kind: "pay" | "data") => {
+    const id = Date.now() + Math.random();
+    setPulses((p) => [...p, { id, from, to, kind }]);
+    setTimeout(() => setPulses((p) => p.filter((x) => x.id !== id)), 1400);
+  };
 
   useEffect(() => {
     fetch("/api/creators").then((r) => r.json()).then((d) => { if (d.ok) setCreators(d.creators); }).catch(() => {});
   }, []);
   const esRef = useRef<EventSource | null>(null);
 
-  function reset() {
+function reset() {
     setRunning(false); setMode(null); setTarget(null); setAnswer(""); setFeed([]); setDone(null); setError(null);
+    setActiveNodes(new Set()); setPulses([]);
     esRef.current?.close();
   }
-
   function ask() {
     if (!question.trim()) return;
     reset();
@@ -49,16 +58,15 @@ const [error, setError] = useState<string | null>(null);
     es.onmessage = (e) => {
       const evt = JSON.parse(e.data);
       switch (evt.type) {
-        case "start": setMode(evt.mode); break;
+    case "start": setMode(evt.mode); lightNode("asker", "escrow"); firePulse("asker", "escrow", "pay"); break;
         case "direct_target": setTarget(evt.name); setFeed((f) => [...f, { kind: "info", text: `Asking ${evt.name}'s agent directly`, sub: `@${evt.handle} · ${evt.agent_label}` }]); break;
-        case "retrieving": setFeed((f) => [...f, { kind: "info", text: "Searching creator knowledge…" }]); break;
-        case "sources": setFeed((f) => [...f, { kind: "info", text: `Found ${evt.count} relevant passages from ${evt.creators} creator${evt.creators > 1 ? "s" : ""}`, sub: evt.names.join(", ") }]); break;
+        case "retrieving": lightNode("router", "specialist"); firePulse("escrow", "router", "data"); firePulse("router", "specialist", "data"); setFeed((f) => [...f, { kind: "info", text: "Searching creator knowledge…" }]); break;
+        case "sources": lightNode("pool"); firePulse("specialist", "pool", "data"); setFeed((f) => [...f, { kind: "info", text: `Found ${evt.count} relevant passages from ${evt.creators} creator${evt.creators > 1 ? "s" : ""}`, sub: evt.names.join(", ") }]); break;
         case "no_match": setFeed((f) => [...f, { kind: "info", text: evt.note }]); break;
-        case "synthesizing": setFeed((f) => [...f, { kind: "info", text: "Synthesizing the answer…" }]); break;
+        case "synthesizing": lightNode("specialist"); setFeed((f) => [...f, { kind: "info", text: "Synthesizing the answer…" }]); break;
         case "answer": setAnswer(evt.answer); break;
-        case "creator_paid": setFeed((f) => [...f, { kind: "pay", name: evt.name, agent: evt.agent, amount: evt.amount, pct: evt.pct, tx: evt.tx }]); break;
-        case "done": setDone(evt); setRunning(false); es.close(); break;
-        case "error": setError(evt.message); setRunning(false); es.close(); break;
+        case "creator_paid": lightNode("contributor"); firePulse("escrow", "contributor", "pay"); setFeed((f) => [...f, { kind: "pay", name: evt.name, agent: evt.agent, amount: evt.amount, pct: evt.pct, tx: evt.tx }]); break;
+        case "done": lightNode("fees"); firePulse("escrow", "fees", "pay"); setDone(evt); setRunning(false); es.close(); break;
       }
     };
     es.onerror = () => { setRunning(false); es.close(); };
@@ -119,6 +127,13 @@ const [error, setError] = useState<string | null>(null);
                 </button>
                 {error && <div className="err">{error}</div>}
               </div>
+            </div>
+          )}
+
+          {(running || activeNodes.size > 0) && (
+            <div style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
+              <div className="gallery-label" style={{ marginBottom: "0.7rem" }}>the money flow, live</div>
+              <EconomyMap activeNodes={activeNodes} pulses={pulses} />
             </div>
           )}
 

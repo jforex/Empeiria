@@ -13,15 +13,18 @@ type Pulse = { id: number; from: string; to: string; kind: "pay" | "data" };
 
 // node positions on a 1000x560 canvas
 const NODES: Record<string, { x: number; y: number; label: string; role: string; emoji: string }> = {
-  asker:        { x: 70,  y: 90,  label: "Asker",        role: "human",        emoji: "🧑" },
-  escrow:       { x: 250, y: 90,  label: "Escrow",       role: "holds budget", emoji: "🔒" },
-  router:       { x: 450, y: 90,  label: "Router",       role: "orchestrator", emoji: "🧭" },
-  specialist:   { x: 650, y: 90,  label: "Mesh",         role: "retrieval", emoji: "🎓" },
-  pool:         { x: 850, y: 280, label: "Knowledge Pool", role: "creator content",  emoji: "📚" },
- contributor:  { x: 650, y: 470, label: "Creators",     role: "paid per use", emoji: "✍️" },
-  con:          { x: 450, y: 470, label: "Agent",        role: "represents",   emoji: "🤝" },
-  fees:         { x: 250, y: 470, label: "Fees Agent",   role: "treasury",     emoji: "🏛️" },
-  transcription:{ x: 70,  y: 280, label: "Transcription", role: "paid service", emoji: "🎙️" },
+  // top row — the ask flow, left to right
+  asker:        { x: 140, y: 110, label: "Asker",         role: "human",          emoji: "🧑" },
+  escrow:       { x: 380, y: 110, label: "Escrow",        role: "holds budget",   emoji: "🔒" },
+  router:       { x: 620, y: 110, label: "Router",        role: "orchestrator",   emoji: "🧭" },
+  specialist:   { x: 860, y: 110, label: "Mesh",          role: "retrieval",      emoji: "🎓" },
+  // middle — shared knowledge
+  pool:         { x: 860, y: 280, label: "Knowledge Pool", role: "creator content", emoji: "📚" },
+  // bottom row — the payout flow, right to left under the ask flow
+  contributor:  { x: 620, y: 450, label: "Creators",      role: "paid per use",   emoji: "✍️" },
+  con:          { x: 380, y: 450, label: "Agent",         role: "represents",     emoji: "🤝" },
+  fees:         { x: 140, y: 450, label: "Fees Agent",    role: "treasury",       emoji: "🏛️" },
+  transcription:{ x: 140, y: 280, label: "Transcription", role: "paid service",   emoji: "🎙️" },
 };
 
 const EDGES: Array<{ from: string; to: string }> = [
@@ -40,11 +43,8 @@ const EDGES: Array<{ from: string; to: string }> = [
 
 function edgePath(from: string, to: string): string {
   const a = NODES[from], b = NODES[to];
-  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-  // slight curve for organic feel
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const cx = mx - dy * 0.08, cy = my + dx * 0.08;
-  return `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+  // straight lines for a clean, legible grid flow
+  return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
 }
 
 export default function EconomyMap({
