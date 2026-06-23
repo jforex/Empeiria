@@ -12,7 +12,11 @@ const supabase = createClient(
 const CATEGORIES = ["startups", "marketing", "design", "coding", "finance", "crypto", "education", "general"];
 
 export default function Create() {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | "dash">(1);
+  const [earned, setEarned] = useState(0);
+  const [wDest, setWDest] = useState("");
+  const [wAmount, setWAmount] = useState("");
+  const [wResult, setWResult] = useState<string | null>(null);
 
   // profile
   const [name, setName] = useState("");
@@ -22,7 +26,7 @@ export default function Create() {
   const [tagline, setTagline] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarBusy, setAvatarBusy] = useState(false);
- const [creator, setCreator] = useState<{ creatorId: string; handle: string; name: string; agentLabel: string; accessKey?: string } | null>(null);
+  const [creator, setCreator] = useState<{ creatorId: string; handle: string; name: string; agentLabel: string; accessKey?: string } | null>(null);
   const [returnKey, setReturnKey] = useState("");
   const [returning, setReturning] = useState(false);
 
@@ -66,6 +70,23 @@ export default function Create() {
     finally { setBusy(false); }
   }
 
+async function withdraw() {
+    if (!wDest.trim() || !wAmount) return;
+    setBusy(true); setError(null); setWResult(null);
+    try {
+      const res = await fetch("/api/creator/withdraw", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessKey: returnKey, destination: wDest, amount: Number(wAmount) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "withdrawal failed");
+      setWResult(data.txHash);
+      setEarned((e) => e - Number(wAmount));
+      setWAmount(""); setWDest("");
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
   async function accessReturn() {
     if (returnKey.trim().length < 4) return;
     setBusy(true); setError(null);
@@ -76,9 +97,10 @@ export default function Create() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "access failed");
-      setCreator({ creatorId: data.creatorId, handle: data.handle, name: data.name, agentLabel: data.agentLabel });
+     setCreator({ creatorId: data.creatorId, handle: data.handle, name: data.name, agentLabel: data.agentLabel });
+      setEarned(data.totalEarned ?? 0);
       setReturning(true);
-      setStep(2);
+      setStep("dash");
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -132,9 +154,9 @@ export default function Create() {
       <section className="band band-alt">
         <div className="inner">
           <div className="steps-rail">
-            <span className={`srail ${step >= 1 ? "on" : ""}`}>1 · Profile</span>
-            <span className={`srail ${step >= 2 ? "on" : ""}`}>2 · Knowledge</span>
-            <span className={`srail ${step >= 3 ? "on" : ""}`}>3 · Live</span>
+           <span className={`srail ${step === "dash" || step >= 1 ? "on" : ""}`}>1 · Profile</span>
+            <span className={`srail ${step !== "dash" && step >= 2 ? "on" : ""}`}>2 · Knowledge</span>
+            <span className={`srail ${step !== "dash" && step >= 3 ? "on" : ""}`}>3 · Live</span>
           </div>
 
           <AnimatePresence mode="wait">
@@ -213,6 +235,34 @@ export default function Create() {
               </motion.div>
             )}
 
+            {step === "dash" && creator && (
+              <motion.div key="dash" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <span className="lit-border lit-gold" aria-hidden />
+                <div className="card-in">
+                  <div className="eyebrow">your agent</div>
+                  <h2 style={{ fontFamily: "Newsreader, Georgia, serif", fontWeight: 500, fontSize: "1.8rem", margin: "0 0 0.3rem" }}>{creator.agentLabel}</h2>
+                  <div className="agent-banner">@{creator.handle}</div>
+                  <div className="dash-earned">
+                    <span className="de-num">${earned.toFixed(4)}</span>
+                    <span className="de-label">available to withdraw</span>
+                  </div>
+                  <div className="withdraw-box">
+                    <div className="wb-head">Withdraw earnings</div>
+                    <input className="f-line" placeholder="Your wallet address (0x...)" value={wDest} onChange={(e) => setWDest(e.target.value)} />
+                    <input className="f-line" placeholder="Amount in USDC" value={wAmount} onChange={(e) => setWAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
+                    {error && <div className="err">{error}</div>}
+                    {wResult && <div className="w-ok">✓ Sent! tx {wResult.slice(0, 14)}…</div>}
+                    <button className="btn btn-solid" onClick={withdraw} disabled={busy || !wDest.trim() || !wAmount || Number(wAmount) > earned}>
+                      {busy ? "Sending…" : "Withdraw →"}
+                    </button>
+                  </div>
+                  <div className="row2">
+                    <button className="btn btn-ghost" onClick={() => setStep(2)}>Add more knowledge →</button>
+                    <a className="btn btn-ghost" href={`/creator/${creator.handle}`}>View public profile →</a>
+                  </div>
+                </div>
+              </motion.div>
+            )}
             {step === 3 && creator && (
               <motion.div key="s3" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <span className="lit-border lit-gold" aria-hidden />
@@ -324,7 +374,13 @@ body { margin: 0; background: #FBF7F0; }
 .return-input:focus { border-color: var(--gold); }
 .return-btn { padding: 0.5rem 1rem; border-radius: 8px; border: 1.5px solid var(--ink); background: transparent; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--ink); }
 .return-btn:disabled { opacity: 0.4; cursor: default; }
-.key-box { background: #fdf6e3; border: 1px solid var(--gold); border-radius: 12px; padding: 1.1rem; margin-bottom: 1.6rem; }
+.dash-earned { display: flex; flex-direction: column; gap: 0.2rem; padding: 1.4rem 0; margin-bottom: 1.4rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.de-num { font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 700; color: var(--gold); }
+.de-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8073; }
+.withdraw-box { margin-bottom: 1.4rem; }
+.wb-head { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: #8a7d62; font-weight: 600; margin-bottom: 1rem; }
+.w-ok { color: #3f8c5f; font-size: 0.9rem; margin-bottom: 0.9rem; font-family: ui-monospace, monospace; }
+.key-box { background: #fdf6e3;
 .key-label { font-size: 0.78rem; color: #8a6d1f; margin-bottom: 0.5rem; }
 .key-code { font-family: ui-monospace, monospace; font-size: 1.15rem; color: var(--ink); font-weight: 700; letter-spacing: 0.05em; }
 @media (prefers-reduced-motion: reduce) { .lit-border { animation: none; } }
