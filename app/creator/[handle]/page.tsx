@@ -1,0 +1,121 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+
+interface Dash {
+  creator: { handle: string; name: string; agentLabel: string; tagline: string | null; category: string; bio: string | null; totalEarned: number; joinedAt: string };
+  knowledge: { contentPieces: number; totalChunks: number; totalUses: number; content: { name: string; type: string; chunks: number; status: string; at: string }[] };
+}
+
+export default function CreatorProfile() {
+  const [handle, setHandle] = useState("");
+
+  useEffect(() => {
+    // read handle from the URL path on the client (prerender-safe)
+    const parts = window.location.pathname.split("/");
+    setHandle(decodeURIComponent(parts[parts.length - 1] || ""));
+  }, []);
+  const [data, setData] = useState<Dash | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+    if (!handle) return;
+    fetch(`/api/creator/dashboard?handle=${encodeURIComponent(handle)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d.ok) setData(d); else setError(d.error ?? "not found"); })
+      .catch(() => setError("failed to load"))
+      .finally(() => setLoading(false));
+  }, [handle]);
+
+  return (
+    <div className="pg">
+      <style>{css}</style>
+      <header className="hd">
+        <a href="/" className="logo"><img src="/empeiria-logo.png" alt="" className="logo-img" />empeiria</a>
+        <nav className="nav"><a href="/marketplace">Ask</a><a href="/create">Create</a></nav>
+      </header>
+
+      <section className="band">
+        <div className="inner">
+          {loading && <div className="muted">Loading…</div>}
+          {error && <div className="muted">No creator found at <b>@{handle}</b>. <a href="/create" style={{ color: "var(--gold)", fontWeight: 600 }}>Create your agent →</a></div>}
+
+          {data && (
+            <>
+              <motion.div className="profile" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="cat-tag">{data.creator.category}</div>
+                <h1>{data.creator.agentLabel}</h1>
+                <div className="byline">by {data.creator.name} · @{data.creator.handle}</div>
+                {data.creator.tagline && <p className="tagline">{data.creator.tagline}</p>}
+                {data.creator.bio && <p className="bio">{data.creator.bio}</p>}
+
+                <div className="stats">
+                  <div className="stat"><span className="stat-num">${data.creator.totalEarned.toFixed(4)}</span><span className="stat-label">earned</span></div>
+                  <div className="stat"><span className="stat-num">{data.knowledge.contentPieces}</span><span className="stat-label">sources</span></div>
+                  <div className="stat"><span className="stat-num">{data.knowledge.totalChunks}</span><span className="stat-label">knowledge chunks</span></div>
+                  <div className="stat"><span className="stat-num">{data.knowledge.totalUses}</span><span className="stat-label">times used</span></div>
+                </div>
+
+                <a className="btn btn-solid ask-cta" href={`/marketplace`}>Ask this agent → <span className="ask-handle">@{data.creator.handle}</span></a>
+              </motion.div>
+
+              {data.knowledge.content.length > 0 && (
+                <div className="sources">
+                  <div className="sources-head">knowledge in this agent</div>
+                  {data.knowledge.content.map((c, i) => (
+                    <div key={i} className="src-row">
+                      <span className="src-name">{c.name || "untitled"}</span>
+                      <span className="src-meta">{c.type} · {c.chunks} chunks · {c.status}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
+      <footer className="ft"><div className="inner ft-in"><span>Settled in USDC on Arc.</span><span>Built for the Lepton Agents Hackathon.</span></div></footer>
+    </div>
+  );
+}
+
+const css = `
+* { box-sizing: border-box; }
+body { margin: 0; background: #FBF7F0; }
+.pg { --ink:#1A1A2E; --paper:#FBF7F0; --gold:#B8923E; --violet:#6B5B95; --line:#e6ddcb; color: var(--ink); font-family: ui-sans-serif, system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+.hd { display: flex; justify-content: space-between; align-items: center; padding: 1.75rem clamp(1.5rem,5vw,5rem); max-width: 1100px; margin: 0 auto; width: 100%; }
+.logo { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; text-decoration: none; color: var(--ink); }
+.logo-img { height: 34px; width: auto; display: block; mix-blend-mode: multiply; }
+.nav { display: flex; gap: 1.75rem; }
+.nav a { color: var(--ink); text-decoration: none; font-size: 0.92rem; font-weight: 600; opacity: 0.7; }
+.nav a:hover { opacity: 1; }
+.band { padding: clamp(2rem,5vw,4rem) clamp(1.5rem,5vw,5rem); flex: 1; }
+.inner { max-width: 640px; margin: 0 auto; }
+.muted { color: #8a8073; font-size: 1.05rem; }
+.profile { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 2.2rem; margin-bottom: 1.5rem; }
+.cat-tag { display: inline-block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); font-weight: 600; background: #fbf3e0; padding: 0.3rem 0.7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+.profile h1 { font-family: Newsreader, Georgia, serif; font-size: clamp(1.8rem,4vw,2.5rem); font-weight: 500; margin: 0 0 0.4rem; line-height: 1.1; }
+.byline { font-size: 0.92rem; color: #8a8073; margin-bottom: 1.2rem; }
+.tagline { font-size: 1.15rem; line-height: 1.5; color: #3a3446; margin: 0 0 0.8rem; }
+.bio { font-size: 1rem; line-height: 1.6; color: #4a4456; margin: 0 0 1.5rem; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 1.4rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 1.6rem; }
+.stat { display: flex; flex-direction: column; gap: 0.25rem; }
+.stat-num { font-family: ui-monospace, monospace; font-size: 1.25rem; font-weight: 700; color: var(--gold); }
+.stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8073; }
+.btn { padding: 0.9rem 1.6rem; border-radius: 11px; font-size: 1rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: transform 0.12s; }
+.btn:hover { transform: translateY(-2px); }
+.btn-solid { background: var(--ink); color: var(--paper); }
+.ask-cta { width: 100%; justify-content: center; }
+.ask-handle { font-family: ui-monospace, monospace; opacity: 0.7; font-size: 0.9rem; }
+.sources { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 1.5rem; }
+.sources-head { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #8a7d62; font-weight: 600; margin-bottom: 1rem; }
+.src-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.src-name { font-family: Newsreader, Georgia, serif; font-size: 1.05rem; }
+.src-meta { font-family: ui-monospace, monospace; font-size: 0.76rem; color: #8a8073; }
+.ft { background: var(--ink); padding: 2rem clamp(1.5rem,5vw,5rem); }
+.ft-in { display: flex; justify-content: space-between; font-size: 0.82rem; color: #b8b2c2; max-width: 640px; margin: 0 auto; }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+`;

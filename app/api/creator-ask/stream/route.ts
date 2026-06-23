@@ -151,6 +151,15 @@ export async function GET(req: NextRequest) {
           send({ type: "creator_paid", name: c.name, agent: c.agent, amount, pct: Math.round(share * 100), tx });
         }
 
+       // track usage: increment times_used for all retrieved chunks; times_paid for paid creators' chunks
+        const paidCreatorSet = new Set([...byCreator.keys()]);
+        const usedChunkIds = relevant.map((c) => c.id);
+        const paidChunkIds = relevant.filter((c) => paidCreatorSet.has(c.creator_id)).map((c) => c.id);
+        // bump used (non-paid) and paid separately so times_used isn't double-counted
+        const usedOnly = usedChunkIds.filter((id) => !paidChunkIds.includes(id));
+        if (usedOnly.length) await db.rpc("bump_chunk_usage", { chunk_ids: usedOnly, paid: false }).then(() => {}, () => {});
+        if (paidChunkIds.length) await db.rpc("bump_chunk_usage", { chunk_ids: paidChunkIds, paid: true }).then(() => {}, () => {});
+
         const refunded = Number((budget - spent - platformFee).toFixed(6));
         await db.from("queries").update({ spent_usdc: spent, platform_fee_usdc: platformFee, refunded_usdc: Math.max(0, refunded), answer }).eq("id", q.id);
         send({ type: "done", answer, paid, spent, platformFee, refunded: Math.max(0, refunded), tier });
