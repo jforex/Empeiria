@@ -1,0 +1,15 @@
+{
+  "name": "empeiria",
+  "version": "1.0.0",
+  "description": "Ask the Empeiria knowledge marketplace from your terminal — creators get paid per use, on-chain.",
+  "type": "module",
+  "bin": {
+    "empeiria": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["empeiria", "x402", "arc", "knowledge", "marketplace", "ai-agents"],
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}
