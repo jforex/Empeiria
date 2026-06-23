@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
 interface Dash {
-  creator: { handle: string; name: string; agentLabel: string; tagline: string | null; category: string; bio: string | null; totalEarned: number; joinedAt: string };
+creator: { handle: string; name: string; agentLabel: string; tagline: string | null; category: string; bio: string | null; totalEarned: number; joinedAt: string; avatarUrl: string | null };
   knowledge: { contentPieces: number; totalChunks: number; totalUses: number; content: { name: string; type: string; chunks: number; status: string; at: string }[] };
 }
 
@@ -45,7 +45,12 @@ useEffect(() => {
           {data && (
             <>
               <motion.div className="profile" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="cat-tag">{data.creator.category}</div>
+               <div className="profile-head">
+                  {data.creator.avatarUrl
+                    ? <img src={data.creator.avatarUrl} alt="" className="profile-avatar" />
+                    : <span className="profile-avatar profile-avatar-ph">{data.creator.name.charAt(0).toUpperCase()}</span>}
+                  <div className="cat-tag">{data.creator.category}</div>
+                </div>
                 <h1>{data.creator.agentLabel}</h1>
                 <div className="byline">by {data.creator.name} · @{data.creator.handle}</div>
                 {data.creator.tagline && <p className="tagline">{data.creator.tagline}</p>}
@@ -96,7 +101,10 @@ body { margin: 0; background: #FBF7F0; }
 .inner { max-width: 640px; margin: 0 auto; }
 .muted { color: #8a8073; font-size: 1.05rem; }
 .profile { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 2.2rem; margin-bottom: 1.5rem; }
-.cat-tag { display: inline-block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); font-weight: 600; background: #fbf3e0; padding: 0.3rem 0.7rem; border-radius: 999px; margin-bottom: 1.2rem; }
+.profile-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
+.profile-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.profile-avatar-ph { display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--paper); font-family: Newsreader, Georgia, serif; font-size: 1.7rem; font-weight: 500; }
+.cat-tag { display: inline-block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); font-weight: 600; background: #fbf3e0; padding: 0.3rem 0.7rem; border-radius: 999px; }
 .profile h1 { font-family: Newsreader, Georgia, serif; font-size: clamp(1.8rem,4vw,2.5rem); font-weight: 500; margin: 0 0 0.4rem; line-height: 1.1; }
 .byline { font-size: 0.92rem; color: #8a8073; margin-bottom: 1.2rem; }
 .tagline { font-size: 1.15rem; line-height: 1.5; color: #3a3446; margin: 0 0 0.8rem; }
