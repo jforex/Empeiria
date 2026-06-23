@@ -230,7 +230,7 @@ body { margin: 0; background: #FBF7F0; }
 .gc-avatar-ph { display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--paper); font-family: Newsreader, Georgia, serif; font-size: 1.3rem; }
 .gc-name { font-size: 0.85rem; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .gc-cat { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gold); font-weight: 600; }
-.q { width: 100%; border: 1px solid var(--line);
+.q { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: 1.08rem; line-height: 1.6; font-family: ui-sans-serif, system-ui, sans-serif; padding: 1rem; outline: none; resize: vertical; color: var(--ink); margin-bottom: 1.2rem; }
 .q:focus { border-color: var(--gold); }
 .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; margin-bottom: 1.3rem; }
 .tier { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.9rem; border-radius: 12px; border: 1.5px solid var(--line); background: var(--paper); cursor: pointer; text-align: left; transition: all 0.15s; }
