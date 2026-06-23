@@ -242,7 +242,7 @@ async function withdraw() {
                   <div className="eyebrow">your agent</div>
                   <h2 style={{ fontFamily: "Newsreader, Georgia, serif", fontWeight: 500, fontSize: "1.8rem", margin: "0 0 0.3rem" }}>{creator.agentLabel}</h2>
                   <div className="agent-banner">@{creator.handle}</div>
-                  <div className="dash-earned">
+                 <div className="dash-earned">
                     <span className="de-num">${earned.toFixed(4)}</span>
                     <span className="de-label">available to withdraw</span>
                   </div>
@@ -251,7 +251,13 @@ async function withdraw() {
                     <input className="f-line" placeholder="Your wallet address (0x...)" value={wDest} onChange={(e) => setWDest(e.target.value)} />
                     <input className="f-line" placeholder="Amount in USDC" value={wAmount} onChange={(e) => setWAmount(e.target.value.replace(/[^0-9.]/g, ""))} />
                     {error && <div className="err">{error}</div>}
-                    {wResult && <div className="w-ok">✓ Sent! tx {wResult.slice(0, 14)}…</div>}
+                    {wResult && (
+                      <div className="w-ok">
+                        <span>✓ Sent on-chain</span>
+                        <a href={`https://testnet.arcscan.app/tx/${wResult}`} target="_blank" rel="noopener noreferrer" className="w-tx">{wResult.slice(0, 10)}…{wResult.slice(-8)}</a>
+                        <button type="button" className="w-copy" onClick={() => navigator.clipboard.writeText(wResult)}>copy</button>
+                      </div>
+                    )}
                     <button className="btn btn-solid" onClick={withdraw} disabled={busy || !wDest.trim() || !wAmount || Number(wAmount) > earned}>
                       {busy ? "Sending…" : "Withdraw →"}
                     </button>
@@ -379,7 +385,11 @@ body { margin: 0; background: #FBF7F0; }
 .de-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8073; }
 .withdraw-box { margin-bottom: 1.4rem; }
 .wb-head { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: #8a7d62; font-weight: 600; margin-bottom: 1rem; }
-.w-ok { color: #3f8c5f; font-size: 0.9rem; margin-bottom: 0.9rem; font-family: ui-monospace, monospace; }
+.de-label { margin-top: 0.3rem; }
+.w-ok { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; color: #3f8c5f; font-size: 0.9rem; margin-bottom: 0.9rem; font-family: ui-monospace, monospace; }
+.w-tx { color: var(--violet); text-decoration: underline; }
+.w-copy { border: 1px solid var(--line); background: #fff; border-radius: 6px; font-size: 0.74rem; padding: 0.2rem 0.55rem; cursor: pointer; color: var(--ink); font-family: ui-sans-serif, system-ui, sans-serif; }
+.w-copy:hover { border-color: var(--gold); }
 .key-box { background: #fdf6e3;
 .key-label { font-size: 0.78rem; color: #8a6d1f; margin-bottom: 0.5rem; }
 .key-code { font-family: ui-monospace, monospace; font-size: 1.15rem; color: var(--ink); font-weight: 700; letter-spacing: 0.05em; }
