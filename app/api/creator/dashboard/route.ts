@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     if (!handle) return NextResponse.json({ error: "handle required" }, { status: 400 });
 
     const { data: creator } = await db.from("creators")
-     .select("id, handle, name, agent_label, agent_tagline, category, bio, total_earned_usdc, created_at, avatar_url")
+    .select("id, handle, name, agent_label, agent_tagline, category, bio, total_earned_usdc, created_at, avatar_url, is_repo, repo_full_name, repo_url, repo_stars")
       .eq("handle", handle).maybeSingle();
     if (!creator) return NextResponse.json({ error: "creator not found" }, { status: 404 });
 
@@ -34,7 +34,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       creator: {
-        handle: creator.handle, name: creator.name, agentLabel: creator.agent_label,
+       handle: creator.handle, name: creator.name, agentLabel: creator.agent_label,
+        isRepo: creator.is_repo ?? false, repoFullName: creator.repo_full_name ?? null,
+        repoUrl: creator.repo_url ?? null, repoStars: creator.repo_stars ?? 0,
        tagline: creator.agent_tagline, category: creator.category, bio: creator.bio,
         avatarUrl: creator.avatar_url,
         totalEarned: Number(creator.total_earned_usdc ?? 0), joinedAt: creator.created_at,
