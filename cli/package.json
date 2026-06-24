@@ -1,7 +1,7 @@
 {
   "name": "empeiria",
-  "version": "1.0.0",
-  "description": "Ask the Empeiria knowledge marketplace from your terminal — creators get paid per use, on-chain.",
+  "version": "1.1.0",
+ "description": "Ask any GitHub repo from your terminal. The repo's agent answers from its real code; the maintainer earns per use, on-chain (USDC on Arc).",
   "type": "module",
 "bin": {
     "empeiria": "index.js"
