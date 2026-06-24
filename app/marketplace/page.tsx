@@ -60,7 +60,7 @@ function reset() {
       switch (evt.type) {
     case "start": setMode(evt.mode); lightNode("asker", "escrow"); firePulse("asker", "escrow", "pay"); break;
         case "direct_target": setTarget(evt.name); setFeed((f) => [...f, { kind: "info", text: `Asking ${evt.name}'s agent directly`, sub: `@${evt.handle} · ${evt.agent_label}` }]); break;
-        case "retrieving": lightNode("router", "specialist"); firePulse("escrow", "router", "data"); firePulse("router", "specialist", "data"); setFeed((f) => [...f, { kind: "info", text: "Searching creator knowledge…" }]); break;
+        case "retrieving": lightNode("specialist"); firePulse("escrow", "specialist", "data"); setFeed((f) => [...f, { kind: "info", text: "Reading the repo…" }]); break;
         case "sources": lightNode("pool"); firePulse("specialist", "pool", "data"); setFeed((f) => [...f, { kind: "info", text: `Found ${evt.count} relevant passages from ${evt.creators} creator${evt.creators > 1 ? "s" : ""}`, sub: evt.names.join(", ") }]); break;
         case "no_match": setFeed((f) => [...f, { kind: "info", text: evt.note }]); break;
         case "synthesizing": lightNode("specialist"); setFeed((f) => [...f, { kind: "info", text: "Synthesizing the answer…" }]); break;

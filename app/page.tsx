@@ -135,7 +135,7 @@ export default function Landing() {
       <section className="band">
         <div className="inner">
           <div className="how-map-label eyebrow">the whole economy, live</div>
-          <EconomyMap activeNodes={new Set(["asker","escrow","router","specialist","pool","contributor","con","fees","transcription"])} pulses={[]} />
+         <EconomyMap activeNodes={new Set(["asker","escrow","specialist","pool","contributor","con","fees","transcription"])} pulses={[]} />
         </div>
       </section>
 

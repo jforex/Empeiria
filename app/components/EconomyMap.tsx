@@ -40,6 +40,7 @@ const EDGES: Array<{ from: string; to: string }> = [
 ];
 function edgePath(from: string, to: string): string {
   const a = NODES[from], b = NODES[to];
+  if (!a || !b) return "";
   // straight lines for a clean, legible grid flow
   return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
 }
