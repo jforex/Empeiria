@@ -14,33 +14,30 @@ type Pulse = { id: number; from: string; to: string; kind: "pay" | "data" };
 // node positions on a 1000x560 canvas
 const NODES: Record<string, { x: number; y: number; label: string; role: string; emoji: string }> = {
   // top row — the ask flow, left to right
-  asker:        { x: 140, y: 110, label: "Asker",         role: "human",          emoji: "🧑" },
-  escrow:       { x: 380, y: 110, label: "Escrow",        role: "holds budget",   emoji: "🔒" },
-  router:       { x: 620, y: 110, label: "Router",        role: "orchestrator",   emoji: "🧭" },
-  specialist:   { x: 860, y: 110, label: "Mesh",          role: "retrieval",      emoji: "🎓" },
-  // middle — shared knowledge
-  pool:         { x: 860, y: 280, label: "Knowledge Pool", role: "creator content", emoji: "📚" },
-  // bottom row — the payout flow, right to left under the ask flow
-  contributor:  { x: 620, y: 450, label: "Creators",      role: "paid per use",   emoji: "✍️" },
-  con:          { x: 380, y: 450, label: "Agent",         role: "represents",     emoji: "🤝" },
-  fees:         { x: 140, y: 450, label: "Fees Agent",    role: "treasury",       emoji: "🏛️" },
-  transcription:{ x: 140, y: 280, label: "Transcription", role: "paid service",   emoji: "🎙️" },
+  asker:        { x: 140, y: 110, label: "Developer",     role: "asks a question", emoji: "🧑‍💻" },
+  escrow:       { x: 380, y: 110, label: "Escrow",        role: "holds budget",    emoji: "🔒" },
+  specialist:   { x: 620, y: 110, label: "Repo Agent",    role: "answers from code", emoji: "📦" },
+  pool:         { x: 860, y: 110, label: "Repo Knowledge", role: "ingested files",  emoji: "📚" },
+  // payout — the maintainer earns
+  contributor:  { x: 620, y: 280, label: "Maintainer",    role: "paid per use",    emoji: "✍️" },
+  // platform fee
+  fees:         { x: 380, y: 280, label: "Fees",          role: "platform 10%",    emoji: "🏛️" },
+  // agent economy — the repo agent pays specialist agents
+  con:          { x: 620, y: 450, label: "Docs Agent",    role: "paid by repo",    emoji: "🤖" },
+  transcription:{ x: 860, y: 450, label: "Dependency Agent", role: "paid by repo",  emoji: "🧩" },
 };
-
 const EDGES: Array<{ from: string; to: string }> = [
+  // ask flow
   { from: "asker", to: "escrow" },
-  { from: "escrow", to: "router" },
-  { from: "router", to: "specialist" },
+  { from: "escrow", to: "specialist" },
   { from: "specialist", to: "pool" },
+  // payout + fee
   { from: "escrow", to: "contributor" },
-  { from: "contributor", to: "con" },
   { from: "escrow", to: "fees" },
-  { from: "contributor", to: "pool" },
-  { from: "fees", to: "transcription" },
-  { from: "transcription", to: "pool" },
-  { from: "con", to: "contributor" },
+  // agent economy — repo agent pays specialist agents
+  { from: "specialist", to: "con" },
+  { from: "specialist", to: "transcription" },
 ];
-
 function edgePath(from: string, to: string): string {
   const a = NODES[from], b = NODES[to];
   // straight lines for a clean, legible grid flow
