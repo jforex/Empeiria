@@ -1,116 +1,110 @@
 # Empeiria
 
-**A decentralized knowledge marketplace where creators turn their expertise into paid AI agents — and you pay only for the knowledge you use.**
+**Turn your GitHub repository into a paid AI teammate.**
 
-Creators upload their writing, talks, and notes. Empeiria builds them into AI knowledge agents. When someone asks a question, a network of autonomous agents retrieves the most relevant creator knowledge, synthesizes an answer, and settles micropayments to each creator in USDC on Arc — paid the moment their knowledge is used. No subscriptions. No middleman taking the value. Creators earn per use; askers pay per answer.
+Connect any repo and Empeiria reads its docs and source to build an agent that answers questions about the codebase — architecture, onboarding, implementation, integration. Developers pay a few cents per answer; the maintainer earns every time their repo helps someone. Settled in USDC on Arc via x402 micropayments.
 
 🔗 **Live:** https://empeiria.vercel.app
-⛓️ **Settlement:** USDC on Arc Testnet, via Circle Gateway + x402 micropayments
+📦 **CLI:** https://www.npmjs.com/package/empeiria
+⛓️ **Settlement:** USDC on Arc Testnet · Circle Gateway + x402
 
 ---
 
-## Try it in one command
-
-No install, no signup — hit the live economy from your terminal:
+## Ask any repo from your terminal
 
 ```bash
-npx empeiria ask "how do I price my SaaS product"
+# inside a git repo — it auto-detects and asks THIS repo
+npx empeiria ask "how does the auth middleware work"
+
+# or target any connected repo directly
+npx empeiria ask "@jforex-empeiria how does the x402 payment flow work"
 ```
 
-Watch creators get paid in real time as their knowledge answers your question. More:
-
-```bash
-npx empeiria ask "@startupmentor how do I avoid churn"   # ask one creator directly
-npx empeiria creators                                     # browse creator agents
-npx empeiria stats                                        # marketplace traction
-```
-
-📦 **npm:** https://www.npmjs.com/package/empeiria
+The repo's agent answers from its real code, and the maintainer is paid on-chain — live, in your terminal.
 
 ---
 
-## Why this exists
+## The problem
 
-The creator economy is broken. Creators are forced into subscriptions, ads, sponsorships, and paywalls. Users often need just *one* answer — and don't want a $20/month subscription for occasional value. Meanwhile, AI companies train on creator knowledge and compensate the creators nothing.
+Open-source maintainers answer the same questions over and over — in issues, in Discord, in DMs — for free. Documentation goes stale. New contributors can't find their footing. And the people who built and maintain the code earn nothing for the knowledge they keep giving away.
 
-Empeiria fixes the unit of exchange: **knowledge is rented, one answer at a time.** A creator's content becomes an agent that earns micropayments per use. Users pay cents for exactly what helps them. Creators keep ownership — their knowledge is never transferred, only consulted.
+Empeiria turns a repository into an agent that handles those questions *and* pays the maintainer for it. The code becomes a teammate that's always available, and every answer is revenue for work already shipped.
 
 ---
 
 ## How it works
 
-**Creators build agents.** A creator signs up, uploads content (text or audio — audio is transcribed by a paid Transcription agent), and it's chunked, embedded, and stored as their knowledge agent. One creator, one growing agent.
+**Connect a repo.** Paste a GitHub URL. Empeiria pulls the repo's docs and source via the GitHub API, chunks and embeds them (each chunk tagged with its file path), and stands up an agent that knows the codebase. Re-connect any time to re-sync.
 
-**Two ways to ask:**
-- **Mesh mode** (default) — the question is matched across *all* creators; the most relevant knowledge is blended into one answer, and every contributing creator is paid their share.
-- **Direct mode** (`@handle`) — tag a creator to ask their agent alone; only they answer and earn.
+**Ask it anything.** Tag `@owner-repo` to ask a specific repo, or — from the CLI inside a git project — just ask and it targets the current repo automatically. The agent retrieves the most relevant files, synthesizes an answer, and cites where in the repo it came from.
 
-**Tiered pricing.** Simple ($0.01), Detailed ($0.03), Analysis ($0.05). The price is held, spent down across the creators whose knowledge is used, and any remainder is refunded. The platform takes a 10% fee.
+**The maintainer earns.** Each answer settles a micropayment in USDC on Arc to the repo's wallet. Tiered pricing — simple ($0.01), detailed ($0.03), analysis ($0.05) — with a 10% platform fee. Empty or failed answers are never charged: the asker is refunded in full.
 
-**Transparent payouts.** Every answer shows exactly who contributed, what percentage, and what they earned — with payment references. Creators withdraw their balance to their own wallet as a real on-chain USDC transfer.
+**Withdraw on-chain.** Maintainers withdraw their balance to their own wallet as a real USDC transfer, verifiable on the Arc explorer.
 
 ---
 
 ## On-chain proof
 
-Creator earnings settle and withdraw as real USDC on Arc Testnet — independently verifiable on the explorer. Example withdrawal (creator → their wallet):
+Earnings settle and withdraw as real USDC on Arc Testnet, independently verifiable:
 
-- **Tx:** `0xe1032b9634c12206f372bb086857360daff947591b9581d47262d54751e391a1`
 - **Explorer:** https://testnet.arcscan.app
-
-USDC is native on Arc; transfers use the system contract at `0x3600000000000000000000000000000000000000`.
+- USDC is native on Arc; transfers use the system contract `0x3600000000000000000000000000000000000000`.
 
 ---
 
 ## Architecture
 
-CREATOR SIDE ASK SIDE
-┌─────────┐ upload (text/audio) ┌────────┐ budget (tier) ┌──────────────┐
-│ Creator │ ───────────────────▶ │ Asker │ ──────────────▶ │ Escrow ledger│
-└────┬────┘ └────────┘ └──────┬───────┘
-│ chunk + embed │ retrieve
+MAINTAINER DEVELOPER
+┌──────────┐ connect repo ┌───────────┐ ask (tier = budget)
+│ GitHub │ ──────────────▶ │ Developer │ ───────────────▶ ┌──────────────┐
+│ repo │ GitHub API └───────────┘ │ Escrow ledger│
+└────┬──────┘ docs + source └──────┬───────┘
+│ chunk + embed (file-tagged) │ retrieve
 ▼ ▼
-┌──────────────┐ match across creators ┌─────────────────────────────┐
-│ Knowledge │ ◀──────────────────────────────── │ Mesh (cross-creator search) │
-│ Pool (vectors)│ └──────────────┬──────────────┘
-└──────────────┘ │ synthesize + pay
+┌──────────────────┐ most relevant files ┌─────────────────────────────┐
+│ Repo knowledge │ ◀──────────────────────────────── │ Retrieval (@repo or mesh) │
+│ (pgvector) │ └──────────────┬──────────────┘
+└──────────────────┘ │ synthesize + cite
 ▼
-┌──────────────────────────────────────────┐
-│ each contributing creator paid via x402 │
-│ (weighted share) · 10% platform fee │
-│ · remainder refunded · USDC on Arc │
-└──────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│ maintainer paid per use via x402 │
+│ 10% platform fee · empty answers refunded │
+│ USDC on Arc Testnet │
+└────────────────────────────────────────────┘
 
-**Stack:** Next.js 16 (Turbopack) · Supabase + pgvector · Groq (Llama 3.3 70B synthesis, Whisper transcription) · Gemini embeddings (768-dim) · Circle Gateway + x402 on Arc Testnet · viem.
+**Stack:** Next.js 16 (Turbopack) · Supabase + pgvector · GitHub REST API · Gemini embeddings (768-dim) · Groq (Llama 3.3 70B synthesis) · Circle Gateway + x402 on Arc Testnet · viem.
 
 ---
 
 ## The CLI
 
-Published to npm as [`empeiria`](https://www.npmjs.com/package/empeiria). Live API by default; point it at any instance with `EMPEIRIA_API_URL`.
+Published as [`empeiria`](https://www.npmjs.com/package/empeiria). Live API by default; override with `EMPEIRIA_API_URL`.
 
 | Command | What it does |
 |---|---|
-| `ask "question" [--tier ...]` | Ask the marketplace; creators answer and get paid |
-| `ask "@handle question"` | Ask one creator's agent directly |
-| `creators` | List creator agents |
-| `earnings <ACCESS-KEY>` | Check a creator's earnings |
-| `stats` | Marketplace traction totals |
-| `share` | Become a creator |
+| `ask "question"` | Inside a git repo, asks **that repo** automatically |
+| `ask "@owner-repo question"` | Ask a specific repo's agent |
+| `ask … --tier simple\|detailed\|analysis` | $0.01 / $0.03 / $0.05 |
+| `repos` | List connected repo agents |
+| `connect` | Connect your GitHub repo |
+| `earnings <ACCESS-KEY>` | Check a repo's earnings |
+| `stats` | Live traction |
 
 ---
 
-## Key surfaces
+## Surfaces
 
-- `/` — the marketplace + live creator grid
-- `/create` — creator onboarding (profile, avatar, upload) + returning-creator dashboard (earnings, withdraw)
-- `/marketplace` — ask the marketplace (mesh or @handle), live payout stream
-- `/creator/[handle]` — a creator's public profile (shareable, doubles as discovery)
+- `/` — landing + live repo agents
+- `/create` — connect a repo (and returning-maintainer dashboard: earnings + withdraw)
+- `/marketplace` — ask any repo, with the live money-flow map
+- `/creator/[handle]` — a repo agent's public page (GitHub link, stars, files it has read)
 
 ---
 
 ## Honest notes
 
-- **Testnet.** All settlement is on Arc Testnet with test USDC.
-- **Custodial (for now).** Creator wallets are platform-custodied; earnings are a ledger claim paid out from the platform treasury on withdrawal — real USDC, real on-chain transfer to the creator's own address. A non-custodial settlement path (USDC settled directly into each creator's wallet per payment) is the natural next step.
+- **Testnet.** Settlement is on Arc Testnet with test USDC.
+- **Custodial (for now).** Repo wallets are platform-custodied; earnings are a ledger claim paid out from the treasury on withdrawal — a real on-chain USDC transfer to the maintainer's address. Direct per-payment settlement into each repo's wallet is the natural next step.
+- **Re-sync is manual.** Re-connecting a repo re-ingests it. Auto-sync on push (GitHub webhook) is a planned next step.
 - **Built for the Lepton Agents Hackathon.**
