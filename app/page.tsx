@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 type Creator = {
   handle: string; name: string; agentLabel: string; tagline: string | null;
   category: string; earned: number; chunks: number; avatarUrl: string | null;
+  isRepo?: boolean; repoFullName?: string | null; repoStars?: number;
 };
 
 const fadeUp = {
@@ -33,40 +34,40 @@ export default function Landing() {
         <div className="hero-veil" />
         <header className="hd">
           <a href="/" className="logo"><img src="/empeiria-logo.png" alt="" className="logo-img" />empeiria</a>
-          <nav className="nav">
-            <a href="/marketplace">Ask</a>
-            <a href="/create">Create</a>
+        <nav className="nav">
+            <a href="/marketplace">Ask a repo</a>
+            <a href="/create">Connect a repo</a>
           </nav>
         </header>
         <div className="hero-body">
-          <motion.div className="hero-eyebrow" initial="hidden" animate="show" custom={0} variants={fadeUp}>
-            A knowledge marketplace · creators paid per use in USDC on Arc via x402
+        <motion.div className="hero-eyebrow" initial="hidden" animate="show" custom={0} variants={fadeUp}>
+            Open source, finally paid · maintainers earn in USDC on Arc via x402
           </motion.div>
           <motion.h1 initial="hidden" animate="show" custom={0} variants={fadeUp}>
-            What you know,<br />finally worth something.
+            Turn your repository<br />into an AI teammate.
           </motion.h1>
           <motion.p className="lede" initial="hidden" animate="show" custom={1} variants={fadeUp}>
-            Creators turn their writing, talks, and notes into AI knowledge agents.
-            Ask a question and the best creators answer — you pay only for the
-            knowledge you use, and they earn the moment it helps.
+            Connect any GitHub repo and it becomes an agent that answers questions
+            about the codebase — architecture, onboarding, implementation. Developers
+            pay per answer; the maintainer earns every time their repo helps someone.
           </motion.p>
           <motion.div className="doors" initial="hidden" animate="show" custom={2} variants={fadeUp}>
             <div className="door lit">
               <span className="lit-border" aria-hidden />
-              <div className="door-in">
-                <div className="eyebrow">if you want answers</div>
-                <h2>Ask the marketplace.</h2>
-                <p>Real creator expertise, blended into one answer. Pay a few cents — split across the creators who helped. Or tag @handle to ask one directly.</p>
-                <a href="/marketplace" className="btn btn-solid">Ask a question →</a>
+            <div className="door-in">
+                <div className="eyebrow">if you're using a codebase</div>
+                <h2>Ask any repo.</h2>
+                <p>Stop digging through docs and source. Ask the repo's agent how something works, how to integrate it, or where to start — and pay a few cents per answer.</p>
+                <a href="/marketplace" className="btn btn-solid">Ask a repo →</a>
               </div>
             </div>
             <div className="door lit">
               <span className="lit-border lit-gold" aria-hidden />
-              <div className="door-in">
-                <div className="eyebrow">if you have expertise</div>
-                <h2>Turn it into a paid agent.</h2>
-                <p>Upload your content — text or audio. Empeiria builds it into a knowledge agent that earns every time someone learns from it.</p>
-                <a href="/create" className="btn btn-ghost">Create your agent →</a>
+             <div className="door-in">
+                <div className="eyebrow">if you maintain a repo</div>
+                <h2>Get paid for your work.</h2>
+                <p>Connect your GitHub repo in seconds. It becomes an AI teammate that answers questions for you — and earns you USDC every time a developer uses it.</p>
+                <a href="/create" className="btn btn-ghost">Connect a repo →</a>
               </div>
             </div>
           </motion.div>
@@ -79,12 +80,12 @@ export default function Landing() {
           initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
           <div className="grid-head">
             <div>
-              <div className="eyebrow">the creators · live</div>
-              <h3 className="grid-title">Knowledge agents earning right now.</h3>
+             <div className="eyebrow">live repo agents</div>
+              <h3 className="grid-title">Repo agents earning right now.</h3>
             </div>
             <div className="grid-stat">
               <span className="gs-num">${totalEarned.toFixed(4)}</span>
-              <span className="gs-label">paid to creators</span>
+              <span className="gs-label">paid to maintainers</span>
             </div>
           </div>
           {creators.length > 0 ? (
@@ -99,8 +100,8 @@ export default function Landing() {
                       : <span className="cc-avatar cc-avatar-ph">{c.name.charAt(0).toUpperCase()}</span>}
                     <div className="cc-cat">{c.category}</div>
                   </div>
-                  <div className="cc-agent">{c.agentLabel}</div>
-                  <div className="cc-by">by {c.name} · @{c.handle}</div>
+                 <div className="cc-agent">{c.agentLabel}</div>
+                  <div className="cc-by">{c.repoFullName ? c.repoFullName : c.name}{typeof c.repoStars === "number" && c.repoStars > 0 ? ` · ★ ${c.repoStars}` : ""}</div>
                   {c.tagline && <div className="cc-tag">{c.tagline}</div>}
                   <div className="cc-foot">
                     <span className="cc-earned">${c.earned.toFixed(4)} earned</span>
@@ -110,7 +111,7 @@ export default function Landing() {
               ))}
             </div>
           ) : (
-            <div className="empty">No creators yet. <a href="/create" style={{ color: "var(--gold)", fontWeight: 600 }}>Be the first to create an agent →</a></div>
+           <div className="empty">No repos connected yet. <a href="/create" style={{ color: "var(--gold)", fontWeight: 600 }}>Connect the first repo →</a></div>
           )}
         </motion.div>
       </section>
@@ -118,15 +119,15 @@ export default function Landing() {
       <section className="band band-alt">
         <motion.div className="inner"
           initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
-          <div className="eyebrow">how it works — knowledge becomes a paid agent</div>
-          <p className="how-lede">Creators own their knowledge; the marketplace rents it, one answer at a time. Agents retrieve, synthesize, and settle payments in USDC on Arc via x402 micropayments — every step a real on-chain decision.</p>
+         <div className="eyebrow">how it works — a repo becomes a paid teammate</div>
+          <p className="how-lede">Maintainers own their code; developers rent its knowledge, one answer at a time. Agents retrieve from the real repo, synthesize, and settle payments in USDC on Arc via x402 micropayments — every step a real on-chain decision.</p>
           <div className="how-grid">
-            <div className="how-card"><div className="how-num">01</div><div className="how-title">Creators build agents</div><p>A creator uploads their writing, talks, or notes. Empeiria chunks and embeds it into a knowledge agent that represents their expertise.</p></div>
+          <div className="how-card"><div className="how-num">01</div><div className="how-title">Connect a repo</div><p>Paste a GitHub URL. Empeiria ingests the docs and source, chunks and embeds them into an agent that knows the codebase.</p></div>
             <div className="how-card"><div className="how-num">02</div><div className="how-title">You ask, with a budget</div><p>Pick a tier — simple, detailed, or analysis. That price is held and spent down as creators' knowledge is used to answer you.</p></div>
-            <div className="how-card"><div className="how-num">03</div><div className="how-title">The mesh retrieves expertise</div><p>Across all creators, the most relevant knowledge is found and blended into one answer — or tag @handle to ask a single creator directly.</p></div>
-            <div className="how-card"><div className="how-num">04</div><div className="how-title">Creators are paid per use</div><p>Each creator whose knowledge shaped the answer earns a share, proportional to how much it helped. Settled instantly via x402. Unused budget is refunded.</p></div>
+           <div className="how-card"><div className="how-num">03</div><div className="how-title">The agent answers from real code</div><p>The most relevant files and docs are retrieved and synthesized into one answer — citing where in the repo it came from.</p></div>
+           <div className="how-card"><div className="how-num">04</div><div className="how-title">Maintainers are paid per use</div><p>The repo's maintainer earns for every answer their codebase provides. Settled instantly via x402 in USDC on Arc. Unused budget is refunded.</p></div>
             <div className="how-card"><div className="how-num">05</div><div className="how-title">Transparent by default</div><p>Every answer shows exactly who contributed, what percentage, and what they earned — with on-chain transaction references.</p></div>
-            <div className="how-card"><div className="how-num">06</div><div className="how-title">Knowledge stays owned</div><p>Creators never transfer their knowledge — it's rented, one response at a time. Each use generates revenue, forever.</p></div>
+           <div className="how-card"><div className="how-num">06</div><div className="how-title">Open source, finally paid</div><p>Maintainers never transfer their code — it's consulted, one answer at a time. Every question becomes revenue for the work they already shipped.</p></div>
           </div>
         </motion.div>
       </section>
