@@ -16,7 +16,8 @@ export default function Create() {
   const [earned, setEarned] = useState(0);
   const [wDest, setWDest] = useState("");
   const [wAmount, setWAmount] = useState("");
-  const [wResult, setWResult] = useState<string | null>(null);
+ const [wResult, setWResult] = useState<string | null>(null);
+  const [dashAvatar, setDashAvatar] = useState<string | null>(null);
 
   // profile
   const [name, setName] = useState("");
@@ -70,7 +71,26 @@ export default function Create() {
     finally { setBusy(false); }
   }
 
-async function withdraw() {
+async function changeAvatar(file: File) {
+    setAvatarBusy(true); setError(null);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `creator-avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("submissions").upload(path, file, { contentType: file.type });
+      if (upErr) throw new Error(`upload failed: ${upErr.message}`);
+      const { data: pub } = supabase.storage.from("submissions").getPublicUrl(path);
+      const res = await fetch("/api/creator/update-avatar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessKey: returnKey, avatarUrl: pub.publicUrl }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "update failed");
+      setDashAvatar(pub.publicUrl);
+    } catch (e) { setError((e as Error).message); }
+    finally { setAvatarBusy(false); }
+  }
+
+  async function withdraw() {
     if (!wDest.trim() || !wAmount) return;
     setBusy(true); setError(null); setWResult(null);
     try {
@@ -97,8 +117,9 @@ async function withdraw() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "access failed");
-     setCreator({ creatorId: data.creatorId, handle: data.handle, name: data.name, agentLabel: data.agentLabel });
+    setCreator({ creatorId: data.creatorId, handle: data.handle, name: data.name, agentLabel: data.agentLabel });
       setEarned(data.totalEarned ?? 0);
+      setDashAvatar(data.avatarUrl ?? null);
       setReturning(true);
       setStep("dash");
     } catch (e) { setError((e as Error).message); }
@@ -239,8 +260,17 @@ async function withdraw() {
               <motion.div key="dash" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <span className="lit-border lit-gold" aria-hidden />
                 <div className="card-in">
-                  <div className="eyebrow">your agent</div>
-                  <h2 style={{ fontFamily: "Newsreader, Georgia, serif", fontWeight: 500, fontSize: "1.8rem", margin: "0 0 0.3rem" }}>{creator.agentLabel}</h2>
+                 <div className="dash-id">
+                    <label className="avatar-pick dash-avatar">
+                      {dashAvatar ? <img src={dashAvatar} alt="" className="avatar-img" /> : <span className="avatar-ph">{avatarBusy ? "…" : creator.name.charAt(0).toUpperCase()}</span>}
+                      <input type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) changeAvatar(f); }} />
+                    </label>
+                    <div>
+                      <div className="eyebrow">your agent</div>
+                      <h2 style={{ fontFamily: "Newsreader, Georgia, serif", fontWeight: 500, fontSize: "1.8rem", margin: "0.2rem 0 0" }}>{creator.agentLabel}</h2>
+                      <div className="dash-change-hint">tap photo to change</div>
+                    </div>
+                  </div>
                   <div className="agent-banner">@{creator.handle}</div>
                  <div className="dash-earned">
                     <span className="de-num">${earned.toFixed(4)}</span>
@@ -380,7 +410,10 @@ body { margin: 0; background: #FBF7F0; }
 .return-input:focus { border-color: var(--gold); }
 .return-btn { padding: 0.5rem 1rem; border-radius: 8px; border: 1.5px solid var(--ink); background: transparent; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--ink); }
 .return-btn:disabled { opacity: 0.4; cursor: default; }
-.dash-earned { display: flex; flex-direction: column; gap: 0.2rem; padding: 1.4rem 0; margin-bottom: 1.4rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.dash-id { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+.dash-avatar { width: 64px; height: 64px; flex-shrink: 0; }
+.dash-change-hint { font-size: 0.72rem; color: #b3a890; margin-top: 0.2rem; }
+.dash-earned { display: flex; flex-direction: column;
 .de-num { font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 700; color: var(--gold); }
 .de-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8073; }
 .withdraw-box { margin-bottom: 1.4rem; }
