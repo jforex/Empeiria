@@ -20,6 +20,9 @@ export default function Connect() {
   const [wDest, setWDest] = useState("");
   const [wAmount, setWAmount] = useState("");
   const [wResult, setWResult] = useState<string | null>(null);
+  const [docs, setDocs] = useState<string | null>(null);
+  const [docsTx, setDocsTx] = useState<string | null>(null);
+  const [docsBusy, setDocsBusy] = useState(false);
 
   async function connect() {
     if (!repo.trim()) return;
@@ -51,6 +54,22 @@ export default function Connect() {
       setDash({ handle: d.handle, agentLabel: d.agentLabel, repoFullName: dr?.creator?.repoFullName ?? null, earned: d.totalEarned ?? 0 });
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
+  }
+
+  async function generateDocs() {
+    setDocsBusy(true); setError(null); setDocs(null); setDocsTx(null);
+    try {
+      const res = await fetch("/api/agents/docs", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessKey: returnKey }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "documentation failed");
+      setDocs(d.docs);
+      setDocsTx(d.paid?.tx ?? null);
+      setDash((p) => p ? { ...p, earned: p.earned - (d.paid?.amount ?? 0) } : p);
+    } catch (e) { setError((e as Error).message); }
+    finally { setDocsBusy(false); }
   }
 
   async function withdraw() {
@@ -158,6 +177,20 @@ export default function Connect() {
                       {busy ? "Sending…" : "Withdraw →"}
                     </button>
                   </div>
+                  <div className="subagent-box">
+                    <div className="wb-head">agent services</div>
+                    <p className="subagent-desc">Your repo agent can pay other agents for work. The Documentation Agent reads your code and writes docs — paid agent-to-agent, on-chain.</p>
+                    <button className="btn btn-ghost subagent-btn" onClick={generateDocs} disabled={docsBusy}>
+                      {docsBusy ? "Documentation Agent working…" : "🤖 Generate documentation ($0.02)"}
+                    </button>
+                    {docsTx && (
+                      <div className="w-ok">
+                        <span>✓ repo agent paid Documentation Agent $0.02</span>
+                        <a href={`https://testnet.arcscan.app/tx/${docsTx}`} target="_blank" rel="noopener noreferrer" className="w-tx">{docsTx.slice(0, 10)}…{docsTx.slice(-8)}</a>
+                      </div>
+                    )}
+                    {docs && <pre className="docs-out">{docs}</pre>}
+                  </div>
                   <a className="btn btn-ghost" href={`/creator/${dash.handle}`}>View public page →</a>
                 </div>
               </motion.div>
@@ -224,6 +257,10 @@ body { margin: 0; background: #FBF7F0; }
 .de-num { font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 700; color: var(--gold); }
 .de-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8073; }
 .withdraw-box { margin-bottom: 1.4rem; }
+.subagent-box { margin: 1.4rem 0; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.subagent-desc { font-size: 0.85rem; color: #8a8073; line-height: 1.5; margin: 0 0 1rem; }
+.subagent-btn { width: 100%; }
+.docs-out { margin-top: 1rem; padding: 1rem; background: #fff; border: 1px solid var(--line); border-radius: 10px; font-family: ui-monospace, monospace; font-size: 0.78rem; line-height: 1.5; color: var(--ink); white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
 .wb-head { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: #8a7d62; font-weight: 600; margin-bottom: 1rem; }
 .w-ok { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; color: #3f8c5f; font-size: 0.9rem; margin-bottom: 0.9rem; font-family: ui-monospace, monospace; }
 .w-tx { color: var(--violet); text-decoration: underline; }
