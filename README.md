@@ -44,6 +44,22 @@ Empeiria turns a repository into an agent that handles those questions *and* pay
 
 ---
 
+## Agent economy — agents that pay agents
+
+A repo agent doesn't just earn — it can **spend** its earnings hiring specialist agents to do deeper work. Each is a real agent-to-agent payment, settled on-chain via x402. Live today:
+
+- **Documentation Agent** — reads the repo's code and generates structured Markdown docs (overview, key modules, setup, API surface). The repo agent pays it $0.02 per run.
+- **Dependency Agent** — analyzes the repo's manifests and reports the stack, key dependencies, and observations. The repo agent pays it $0.02 per run.
+
+Every invocation is a genuine USDC transfer between agent wallets, logged and verifiable on the Arc explorer. A maintainer triggers them from their dashboard and watches their repo agent pay another agent in real time.
+
+**Roadmap — more specialists, same pattern:**
+- **Testing Agent** — find untested paths and generate test scaffolding.
+- **Security Agent** — surface risky patterns and dependency concerns (with a real CVE source).
+- **Live dependency checks** — query npm/PyPI to flag outdated or vulnerable versions.
+
+The thesis: open knowledge communities become *agent-native economies*, where agents transact with each other to compound value — and the humans who own the underlying work get paid at every step.
+
 ## On-chain proof
 
 Earnings settle and withdraw as real USDC on Arc Testnet, independently verifiable:
