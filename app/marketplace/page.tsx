@@ -130,12 +130,7 @@ function reset() {
             </div>
           )}
 
-          {(running || activeNodes.size > 0) && (
-            <div style={{ marginTop: "1.5rem", marginBottom: "1rem" }}>
-              <div className="gallery-label" style={{ marginBottom: "0.7rem" }}>the money flow, live</div>
-              <EconomyMap activeNodes={activeNodes} pulses={pulses} />
-            </div>
-          )}
+      
 
           {(running || feed.length > 0) && !done && (
             <div className="feed">
