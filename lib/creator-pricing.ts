@@ -20,7 +20,7 @@ export function tierFor(t: string | null | undefined): Tier {
 
 /** Parse a leading @handle for direct mode. Returns the handle (no @) + the cleaned question. */
 export function parseHandle(question: string): { handle: string | null; cleaned: string } {
-  const m = question.trim().match(/^@([a-zA-Z0-9_]+)\s+([\s\S]+)$/);
+ const m = question.trim().match(/^@([a-zA-Z0-9_-]+)\s+([\s\S]+)$/);
   if (m) return { handle: m[1].toLowerCase(), cleaned: m[2].trim() };
   return { handle: null, cleaned: question.trim() };
 }

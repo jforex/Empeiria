@@ -82,9 +82,9 @@ function reset() {
 
       <section className="band hero">
         <div className="inner">
-          <div className="eyebrow">ask the knowledge marketplace</div>
-          <h1>Pay only for the<br />knowledge you use.</h1>
-          <p className="lede">Ask a question and creator agents answer from real expertise. Pay a few cents — split across the creators whose knowledge helped. Tag <code>@handle</code> to ask one creator directly.</p>
+         <div className="eyebrow">ask any repository</div>
+          <h1>Understand any<br />codebase in seconds.</h1>
+          <p className="lede">Ask a repo's agent how something works, how to integrate it, or where to start. It answers from the real code and docs — and you pay a few cents per answer. Tag <code>@repo</code> to ask a specific one.</p>
         </div>
       </section>
 
@@ -96,7 +96,7 @@ function reset() {
               <div className="ask-in">
                {creators.length > 0 && (
                   <div className="gallery">
-                    <div className="gallery-label">ask a creator directly — tap one</div>
+                    <div className="gallery-label">ask a repo directly — tap one</div>
                     <div className="marquee">
                       <div className="marquee-track">
                         {[...creators, ...creators].map((c, i) => (
@@ -104,15 +104,15 @@ function reset() {
                             {c.avatarUrl
                               ? <img src={c.avatarUrl} alt="" className="gc-avatar" />
                               : <span className="gc-avatar gc-avatar-ph">{c.name.charAt(0).toUpperCase()}</span>}
-                            <span className="gc-name">{c.name}</span>
-                            <span className="gc-cat">{c.category}</span>
+                           <span className="gc-name">{c.name.includes("/") ? c.name.split("/")[1] : c.name}</span>
+                            <span className="gc-cat">@{c.handle}</span>
                           </button>
                         ))}
                       </div>
                     </div>
                   </div>
                 )}
-                <textarea className="q" rows={3} placeholder="Ask anything — or @handle to ask one creator (e.g. @startupmentor how do I price my SaaS?)" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={running} />
+               <textarea className="q" rows={3} placeholder="Ask about any repo — or @repo to target one (e.g. @jforex-empeiria how does the x402 payment flow work?)" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={running} />
                 <div className="tiers">
                   {TIERS.map((t) => (
                     <button key={t.id} className={`tier ${tier === t.id ? "tier-on" : ""}`} onClick={() => setTier(t.id)} disabled={running}>
