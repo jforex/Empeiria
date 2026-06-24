@@ -33,23 +33,31 @@ interface Chunk {
   id: string; creator_id: string; text: string; similarity: number;
   creator_name: string; agent_label: string; wallet_address: string;
 }
-
 async function synthesize(question: string, chunks: Chunk[], tier: Tier) {
   const list = chunks.map((c, i) => `[${i}] (${c.creator_name} — ${c.agent_label})\n${c.text.slice(0, 1000)}`).join("\n\n");
   const wordCap = TIERS[tier].words;
-  const prompt = `A user asked: "${question}"
-Using ONLY the creator knowledge below, write a ${tier} answer (under ${wordCap} words, practical and direct).
-${list}
-Then report how much each [0..${chunks.length - 1}] contributed to the answer, as weights summing to 1.0 (each used one > 0).
-Return ONLY JSON: {"answer":"...","contributions":{"0":0.6}}.`;
-  const r = await openai.chat.completions.create({ model: CHAT_MODEL, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" } });
-  const parsed = JSON.parse(r.choices[0].message.content ?? "{}");
+
+  // 1) get the answer as plain text — most reliable, no JSON fragility around code
+  const answerPrompt = `A developer asked about a codebase: "${question}"
+Using ONLY the repo files below, write a clear, ${tier} answer (under ${wordCap} words). Be concrete — reference the actual files, functions, and flow. If the files only partially cover it, answer with what they do show. Never reply with an empty answer.
+
+${list}`;
+  const ar = await openai.chat.completions.create({ model: CHAT_MODEL, messages: [{ role: "user", content: answerPrompt }], max_tokens: 1200, temperature: 0.4 });
+  const answer = (ar.choices[0].message.content ?? "").trim();
+
+  // 2) compute contributions separately (small JSON, no answer text to break it)
   const contributions: Record<number, number> = {};
-  for (const [k, v] of Object.entries(parsed.contributions ?? {})) {
-    const idx = Number(k), val = Number(v);
-    if (!Number.isNaN(idx) && !Number.isNaN(val) && val > 0) contributions[idx] = val;
-  }
-  return { answer: parsed.answer ?? "", contributions };
+  try {
+    const cprompt = `For the question "${question}", here are repo files [0..${chunks.length - 1}]:\n${chunks.map((c, i) => `[${i}] ${c.text.slice(0, 300)}`).join("\n")}\n\nReturn ONLY JSON {"contributions":{"0":0.6,"1":0.4}} — weights summing to 1.0, every used file > 0.`;
+    const cr = await openai.chat.completions.create({ model: CHAT_MODEL, messages: [{ role: "user", content: cprompt }], response_format: { type: "json_object" }, max_tokens: 300 });
+    const parsed = JSON.parse(cr.choices[0].message.content ?? "{}");
+    for (const [k, v] of Object.entries(parsed.contributions ?? {})) {
+      const idx = Number(k), val = Number(v);
+      if (!Number.isNaN(idx) && !Number.isNaN(val) && val > 0) contributions[idx] = val;
+    }
+  } catch { /* fall back to similarity weights downstream */ }
+
+  return { answer, contributions };
 }
 
 export async function GET(req: NextRequest) {
