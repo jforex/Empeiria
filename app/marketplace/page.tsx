@@ -94,24 +94,7 @@ function reset() {
             <div className="ask-card lit">
               <span className="lit-border lit-gold" aria-hidden />
               <div className="ask-in">
-               {creators.length > 0 && (
-                  <div className="gallery">
-                    <div className="gallery-label">ask a repo directly — tap one</div>
-                    <div className="marquee">
-                      <div className="marquee-track">
-                        {[...creators, ...creators].map((c, i) => (
-                          <button key={i} className="gcard" onClick={() => setQuestion(`@${c.handle} `)} disabled={running} type="button">
-                            {c.avatarUrl
-                              ? <img src={c.avatarUrl} alt="" className="gc-avatar" />
-                              : <span className="gc-avatar gc-avatar-ph">{c.name.charAt(0).toUpperCase()}</span>}
-                           <span className="gc-name">{c.name.includes("/") ? c.name.split("/")[1] : c.name}</span>
-                            <span className="gc-cat">@{c.handle}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+              
                <textarea className="q" rows={3} placeholder="Ask about any repo — or @repo to target one (e.g. @jforex-empeiria how does the x402 payment flow work?)" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={running} />
                 <div className="tiers">
                   {TIERS.map((t) => (
