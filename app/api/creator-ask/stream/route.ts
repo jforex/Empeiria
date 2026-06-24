@@ -107,6 +107,13 @@ export async function GET(req: NextRequest) {
         // 2. synthesize
         send({ type: "synthesizing" });
         const { answer, contributions } = await synthesize(cleaned, relevant, tier);
+       // guard: never charge for an empty answer — refund and stop
+        if (!answer || !answer.trim()) {
+          await db.from("queries").update({ spent_usdc: 0, refunded_usdc: budget, answer: "" }).eq("id", q.id);
+          send({ type: "no_match", note: "Couldn't generate an answer from the repo for that question — you were not charged." });
+          send({ type: "done", answer: "", paid: [], spent: 0, refunded: budget, platformFee: 0, tier });
+          return;
+        }
         let contribMap = contributions;
         if (Object.keys(contribMap).length === 0) {
           const total = relevant.reduce((s, c) => s + c.similarity, 0) || 1;
