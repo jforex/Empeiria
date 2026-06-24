@@ -20,9 +20,12 @@ export default function Connect() {
   const [wDest, setWDest] = useState("");
   const [wAmount, setWAmount] = useState("");
   const [wResult, setWResult] = useState<string | null>(null);
-  const [docs, setDocs] = useState<string | null>(null);
+const [docs, setDocs] = useState<string | null>(null);
   const [docsTx, setDocsTx] = useState<string | null>(null);
   const [docsBusy, setDocsBusy] = useState(false);
+  const [deps, setDeps] = useState<string | null>(null);
+  const [depsTx, setDepsTx] = useState<string | null>(null);
+  const [depsBusy, setDepsBusy] = useState(false);
 
   async function connect() {
     if (!repo.trim()) return;
@@ -70,6 +73,22 @@ export default function Connect() {
       setDash((p) => p ? { ...p, earned: p.earned - (d.paid?.amount ?? 0) } : p);
     } catch (e) { setError((e as Error).message); }
     finally { setDocsBusy(false); }
+  }
+
+  async function analyzeDeps() {
+    setDepsBusy(true); setError(null); setDeps(null); setDepsTx(null);
+    try {
+      const res = await fetch("/api/agents/deps", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessKey: returnKey }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "dependency analysis failed");
+      setDeps(d.report);
+      setDepsTx(d.paid?.tx ?? null);
+      setDash((p) => p ? { ...p, earned: p.earned - (d.paid?.amount ?? 0) } : p);
+    } catch (e) { setError((e as Error).message); }
+    finally { setDepsBusy(false); }
   }
 
   async function withdraw() {
@@ -190,6 +209,16 @@ export default function Connect() {
                       </div>
                     )}
                     {docs && <pre className="docs-out">{docs}</pre>}
+                    <button className="btn btn-ghost subagent-btn" onClick={analyzeDeps} disabled={depsBusy} style={{ marginTop: "0.8rem" }}>
+                      {depsBusy ? "Dependency Agent working…" : "📦 Analyze dependencies ($0.02)"}
+                    </button>
+                    {depsTx && (
+                      <div className="w-ok">
+                        <span>✓ repo agent paid Dependency Agent $0.02</span>
+                        <a href={`https://testnet.arcscan.app/tx/${depsTx}`} target="_blank" rel="noopener noreferrer" className="w-tx">{depsTx.slice(0, 10)}…{depsTx.slice(-8)}</a>
+                      </div>
+                    )}
+                    {deps && <pre className="docs-out">{deps}</pre>}
                   </div>
                   <a className="btn btn-ghost" href={`/creator/${dash.handle}`}>View public page →</a>
                 </div>
