@@ -33,7 +33,7 @@ useEffect(() => {
     <div className="pg">
       <style>{css}</style>
       <header className="hd">
-        <a href="/" className="logo"><img src="/empeiria-logo.png" alt="" className="logo-img" />empeiria</a>
+        <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
         <nav className="nav"><a href="/marketplace">Ask</a><a href="/create">Create</a></nav>
       </header>
 

@@ -33,7 +33,7 @@ export default function Landing() {
         <div className="hero-img" />
         <div className="hero-veil" />
         <header className="hd">
-          <a href="/" className="logo"><img src="/empeiria-logo.png" alt="" className="logo-img" />empeiria</a>
+          <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
         <nav className="nav">
             <a href="/marketplace">Ask a repo</a>
             <a href="/create">Connect a repo</a>
@@ -157,14 +157,14 @@ body { margin: 0; background: #FBF7F0; }
 /* HERO */
 .hero { position: relative; min-height: 100vh; display: flex; flex-direction: column;
   padding: 0 clamp(1.5rem, 5vw, 5rem); overflow: hidden; }
-.hero-img { position: absolute; inset: 0; background: url("/landing-page.jpg") center / cover no-repeat;
+.hero-img { position: absolute; inset: 0; background: url("/empeiria-final-background.jpg") center / cover no-repeat;
   z-index: 0; }
 .hero-veil { position: absolute; inset: 0; z-index: 1;
-  background: linear-gradient(180deg, rgba(251,247,240,0.55) 0%, rgba(251,247,240,0.30) 35%, rgba(251,247,240,0.65) 100%); }
+  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 35%, rgba(255,255,255,0.70) 100%); }
 .hd { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center;
   padding: 1.75rem 0; }
 .logo { display: inline-flex; align-items: center; gap: 0.6rem; font-size: 1.15rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700;
-  text-decoration: none; color: var(--ink); }
+text-decoration: none; color: var(--ink); }
 .logo-img { height: 34px; width: auto; display: block; }
 .nav { display: flex; gap: 1.75rem; }
 .nav a { color: var(--ink); text-decoration: none; font-size: 0.92rem; font-weight: 600; opacity: 0.75; }
@@ -173,7 +173,7 @@ body { margin: 0; background: #FBF7F0; }
   justify-content: center; max-width: 1100px; width: 100%; margin: 0 auto; padding: 2rem 0 4rem; }
 .hero-eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; color: var(--gold); margin-bottom: 1.1rem; max-width: 60ch; line-height: 1.5; }
 .hero-body h1 { font-family: Newsreader, Georgia, serif; font-size: clamp(2.4rem, 6vw, 4rem);
-  line-height: 1.08; font-weight: 500; margin: 0 0 1.5rem; letter-spacing: -0.02em; max-width: 16ch; }
+line-height: 1.08; font-weight: 500; margin: 0 0 1.5rem; letter-spacing: -0.02em; max-width: 16ch; color: #1A1A2E; }
 .lede { font-size: clamp(1.1rem, 2vw, 1.35rem); line-height: 1.6; color: #3a3446; max-width: 46ch;
   margin: 0 0 3rem; }
 .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; max-width: 760px; }
