@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 type Connected = {
   handle: string; accessKey: string; accountKey: string; owner: string; repo: string; agentLabel: string;
-  filesIngested: number; chunks: number; stars: number;
+  filesIngested: number; chunks: number; stars: number; autoSync?: boolean; webhookError?: string | null;
 };
 
 export default function Connect() {
@@ -143,6 +143,13 @@ async function withdraw() {
                   <div className="key-box">
                     <div className="key-label">⚠ save your account key — one key for all your repos, to manage earnings &amp; withdraw</div>
                     <code className="key-code">{result.accountKey}</code>
+                  </div>
+                  <div className={result.autoSync ? "sync-box sync-on" : "sync-box sync-off"}>
+                    {result.autoSync ? (
+                      <><strong>✓ Auto-sync enabled</strong> — your agent re-reads the repo automatically when you push to GitHub.</>
+                    ) : (
+                      <><strong>Auto-sync unavailable</strong> — we couldn't add a webhook automatically{result.webhookError ? ` (${result.webhookError})` : ""}. You can re-connect anytime to manually re-sync, or add a webhook pointing to <code>/api/webhooks/github</code> in your repo settings.</>
+                    )}
                   </div>
                   <div className="row2">
                     <a className="btn btn-solid" href="/marketplace">Try asking your repo →</a>
