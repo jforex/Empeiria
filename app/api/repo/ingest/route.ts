@@ -24,12 +24,29 @@ export async function POST(req: NextRequest) {
     // fetch repo metadata
     const meta = await fetchRepoMeta(parsed.owner, parsed.name);
 
+   // find or create the dev account for this GitHub owner (one account per owner)
+    const rand4 = () => Math.random().toString(16).slice(2, 6).toUpperCase();
+    let { data: devAccount } = await db.from("dev_accounts").select("id, account_key").eq("github_owner", parsed.owner.toLowerCase()).maybeSingle();
+    if (!devAccount) {
+      const apk = generatePrivateKey();
+      const aaddr = privateKeyToAccount(apk).address;
+      const accountKey = `EMP-${rand4()}-${rand4()}`;
+      const { data: newAcct, error: acctErr } = await db.from("dev_accounts").insert({
+        github_owner: parsed.owner.toLowerCase(), account_key: accountKey,
+        wallet_address: aaddr, wallet_private_key: apk,
+      }).select("id, account_key").single();
+      if (acctErr) throw acctErr;
+      devAccount = newAcct;
+    }
+
     // already connected?
     const { data: existing } = await db.from("creators").select("id, handle, access_key").eq("repo_full_name", meta.fullName).maybeSingle();
     let creatorId: string, handle: string, accessKey: string;
 
     if (existing) {
       creatorId = existing.id; handle = existing.handle; accessKey = existing.access_key;
+      // ensure it's linked to the dev account
+      await db.from("creators").update({ owner_account_id: devAccount.id }).eq("id", creatorId);
       // clear old chunks so re-ingest is fresh
       await db.from("creator_chunks").delete().eq("creator_id", creatorId);
       await db.from("creator_content").delete().eq("creator_id", creatorId);
@@ -50,8 +67,9 @@ export async function POST(req: NextRequest) {
         agent_tagline: meta.description || `Ask anything about ${meta.fullName}`,
         avatar_url: meta.ownerAvatar,
         wallet_address: address, wallet_private_key: pk, access_key: accessKey,
-        is_repo: true, repo_full_name: meta.fullName, repo_url: `https://github.com/${meta.fullName}`,
+       is_repo: true, repo_full_name: meta.fullName, repo_url: `https://github.com/${meta.fullName}`,
         repo_stars: meta.stars, repo_branch: meta.defaultBranch,
+        owner_account_id: devAccount.id,
       }).select("id").single();
       if (error) throw error;
       creatorId = created.id;
@@ -63,6 +81,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       handle, accessKey,
+      accountKey: devAccount.account_key,
+      owner: parsed.owner,
       repo: meta.fullName,
       agentLabel: `${parsed.name} Agent`,
       filesIngested: result.filesIngested,

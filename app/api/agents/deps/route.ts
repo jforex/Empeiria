@@ -18,14 +18,13 @@ const MANIFEST_HINTS = ["package.json", "requirements.txt", "cargo.toml", "go.mo
 
 export async function POST(req: NextRequest) {
   try {
-    const { accessKey } = await req.json();
+    const { accessKey, handle } = await req.json();
     const key = accessKey?.trim().toUpperCase();
-    if (!key) return NextResponse.json({ error: "access key required" }, { status: 400 });
+    if (!key && !handle) return NextResponse.json({ error: "access key or handle required" }, { status: 400 });
 
-    const { data: creator } = await db.from("creators")
-      .select("id, name, repo_full_name, total_earned_usdc, is_repo")
-      .eq("access_key", key).maybeSingle();
-    if (!creator) return NextResponse.json({ error: "invalid access key" }, { status: 404 });
+    const q = db.from("creators").select("id, name, repo_full_name, total_earned_usdc, is_repo");
+    const { data: creator } = await (handle ? q.eq("handle", handle) : q.eq("access_key", key)).maybeSingle();
+    if (!creator) return NextResponse.json({ error: "repo not found" }, { status: 404 });
     if (!creator.is_repo) return NextResponse.json({ error: "dependency agent works on repos only" }, { status: 400 });
     if (Number(creator.total_earned_usdc ?? 0) < DEP_AGENT_FEE)
       return NextResponse.json({ error: `repo agent needs at least $${DEP_AGENT_FEE} in earnings to pay the Dependency Agent (has $${Number(creator.total_earned_usdc ?? 0).toFixed(4)})` }, { status: 402 });

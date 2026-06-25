@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Connected = {
-  handle: string; accessKey: string; repo: string; agentLabel: string;
+  handle: string; accessKey: string; accountKey: string; owner: string; repo: string; agentLabel: string;
   filesIngested: number; chunks: number; stars: number;
 };
 
@@ -16,16 +16,12 @@ export default function Connect() {
 
   // returning maintainer
   const [returnKey, setReturnKey] = useState("");
-  const [dash, setDash] = useState<{ handle: string; agentLabel: string; repoFullName: string | null; earned: number } | null>(null);
+  type AcctRepo = { handle: string; repoFullName: string | null; repoUrl: string | null; repoStars: number; agentLabel: string; earned: number };
+  const [dash, setDash] = useState<{ owner: string; pooledEarnings: number; repos: AcctRepo[] } | null>(null);
   const [wDest, setWDest] = useState("");
   const [wAmount, setWAmount] = useState("");
   const [wResult, setWResult] = useState<string | null>(null);
-const [docs, setDocs] = useState<string | null>(null);
-  const [docsTx, setDocsTx] = useState<string | null>(null);
-  const [docsBusy, setDocsBusy] = useState(false);
-  const [deps, setDeps] = useState<string | null>(null);
-  const [depsTx, setDepsTx] = useState<string | null>(null);
-  const [depsBusy, setDepsBusy] = useState(false);
+
 
   async function connect() {
     if (!repo.trim()) return;
@@ -46,63 +42,31 @@ const [docs, setDocs] = useState<string | null>(null);
     if (returnKey.trim().length < 4) return;
     setBusy(true); setError(null);
     try {
-      const res = await fetch("/api/creator/access", {
+      const res = await fetch("/api/account/dashboard", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessKey: returnKey }),
+        body: JSON.stringify({ accountKey: returnKey }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "not found");
-      // pull repo info from the dashboard endpoint
-      const dr = await fetch(`/api/creator/dashboard?handle=${d.handle}`).then((r) => r.json());
-      setDash({ handle: d.handle, agentLabel: d.agentLabel, repoFullName: dr?.creator?.repoFullName ?? null, earned: d.totalEarned ?? 0 });
+      setDash({ owner: d.owner, pooledEarnings: d.pooledEarnings ?? 0, repos: d.repos ?? [] });
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
 
-  async function generateDocs() {
-    setDocsBusy(true); setError(null); setDocs(null); setDocsTx(null);
-    try {
-      const res = await fetch("/api/agents/docs", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessKey: returnKey }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error ?? "documentation failed");
-      setDocs(d.docs);
-      setDocsTx(d.paid?.tx ?? null);
-      setDash((p) => p ? { ...p, earned: p.earned - (d.paid?.amount ?? 0) } : p);
-    } catch (e) { setError((e as Error).message); }
-    finally { setDocsBusy(false); }
-  }
 
-  async function analyzeDeps() {
-    setDepsBusy(true); setError(null); setDeps(null); setDepsTx(null);
-    try {
-      const res = await fetch("/api/agents/deps", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessKey: returnKey }),
-      });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error ?? "dependency analysis failed");
-      setDeps(d.report);
-      setDepsTx(d.paid?.tx ?? null);
-      setDash((p) => p ? { ...p, earned: p.earned - (d.paid?.amount ?? 0) } : p);
-    } catch (e) { setError((e as Error).message); }
-    finally { setDepsBusy(false); }
-  }
 
-  async function withdraw() {
+async function withdraw() {
     if (!wDest.trim() || !wAmount) return;
     setBusy(true); setError(null); setWResult(null);
     try {
-      const res = await fetch("/api/creator/withdraw", {
+      const res = await fetch("/api/account/withdraw", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessKey: returnKey, destination: wDest, amount: Number(wAmount) }),
+        body: JSON.stringify({ accountKey: returnKey, destination: wDest, amount: Number(wAmount) }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error ?? "withdrawal failed");
       setWResult(d.txHash);
-      setDash((p) => p ? { ...p, earned: p.earned - Number(wAmount) } : p);
+      setDash((p) => p ? { ...p, pooledEarnings: p.pooledEarnings - Number(wAmount) } : p);
       setWAmount(""); setWDest("");
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
@@ -139,7 +103,7 @@ const [docs, setDocs] = useState<string | null>(null);
                   </button>
                   <div className="return-row">
                     <span className="return-label">Already connected?</span>
-                    <input className="return-input" placeholder="Paste access key (EMP-XXXX-XXXX)" value={returnKey} onChange={(e) => setReturnKey(e.target.value)} />
+                   <input className="return-input" placeholder="Paste account key (EMP-XXXX-XXXX)" value={returnKey} onChange={(e) => setReturnKey(e.target.value)} />
                     <button className="return-btn" onClick={loadDash} disabled={busy || returnKey.trim().length < 4}>Open →</button>
                   </div>
                 </div>
@@ -158,8 +122,8 @@ const [docs, setDocs] = useState<string | null>(null);
                     <code className="share-code">@{result.handle} &lt;question&gt;</code>
                   </div>
                   <div className="key-box">
-                    <div className="key-label">⚠ save your access key — you'll need it to withdraw earnings or re-sync</div>
-                    <code className="key-code">{result.accessKey}</code>
+                    <div className="key-label">⚠ save your account key — one key for all your repos, to manage earnings &amp; withdraw</div>
+                    <code className="key-code">{result.accountKey}</code>
                   </div>
                   <div className="row2">
                     <a className="btn btn-solid" href="/marketplace">Try asking your repo →</a>
@@ -173,13 +137,12 @@ const [docs, setDocs] = useState<string | null>(null);
               <motion.div key="dash" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <span className="lit-border lit-gold" aria-hidden />
                 <div className="card-in">
-                  <div className="eyebrow">your repo agent</div>
-                  <h2 style={{ fontFamily: "Newsreader, Georgia, serif", fontWeight: 500, fontSize: "1.8rem", margin: "0.2rem 0 0.2rem" }}>{dash.agentLabel}</h2>
-                  {dash.repoFullName && <div className="agent-banner">{dash.repoFullName}</div>}
+                  <div className="eyebrow">your repos · @{dash.owner}</div>
                   <div className="dash-earned">
-                    <span className="de-num">${dash.earned.toFixed(4)}</span>
-                    <span className="de-label">available to withdraw</span>
+                    <span className="de-num">${dash.pooledEarnings.toFixed(4)}</span>
+                    <span className="de-label">pooled earnings · available to withdraw</span>
                   </div>
+
                   <div className="withdraw-box">
                     <div className="wb-head">Withdraw earnings</div>
                     <input className="f-line" placeholder="Your wallet address (0x...)" value={wDest} onChange={(e) => setWDest(e.target.value)} />
@@ -192,38 +155,32 @@ const [docs, setDocs] = useState<string | null>(null);
                         <button type="button" className="w-copy" onClick={() => navigator.clipboard.writeText(wResult)}>copy</button>
                       </div>
                     )}
-                    <button className="btn btn-solid" onClick={withdraw} disabled={busy || !wDest.trim() || !wAmount || Number(wAmount) > dash.earned}>
+                    <button className="btn btn-solid" onClick={withdraw} disabled={busy || !wDest.trim() || !wAmount || Number(wAmount) > dash.pooledEarnings}>
                       {busy ? "Sending…" : "Withdraw →"}
                     </button>
                   </div>
-                  <div className="subagent-box">
-                    <div className="wb-head">agent services</div>
-                    <p className="subagent-desc">Your repo agent can pay other agents for work. The Documentation Agent reads your code and writes docs — paid agent-to-agent, on-chain.</p>
-                    <button className="btn btn-ghost subagent-btn" onClick={generateDocs} disabled={docsBusy}>
-                      {docsBusy ? "Documentation Agent working…" : "🤖 Generate documentation ($0.02)"}
-                    </button>
-                    {docsTx && (
-                      <div className="w-ok">
-                        <span>✓ repo agent paid Documentation Agent $0.02</span>
-                        <a href={`https://testnet.arcscan.app/tx/${docsTx}`} target="_blank" rel="noopener noreferrer" className="w-tx">{docsTx.slice(0, 10)}…{docsTx.slice(-8)}</a>
+
+                  <div className="wb-head" style={{ marginBottom: "0.8rem" }}>your repos ({dash.repos.length})</div>
+                  <div className="repo-list">
+                    {dash.repos.map((r) => (
+                      <div key={r.handle} className="repo-row">
+                        <div className="repo-row-main">
+                          <div className="repo-row-name">{r.repoFullName}{r.repoStars > 0 ? ` · ★ ${r.repoStars}` : ""}</div>
+                          <div className="repo-row-sub">@{r.handle} · ${r.earned.toFixed(4)} earned</div>
+                        </div>
+                        <div className="repo-row-actions">
+                          <a className="repo-link-btn" href={`/marketplace`}>Ask</a>
+                          <a className="repo-link-btn" href={`/creator/${r.handle}`}>Manage →</a>
+                        </div>
                       </div>
-                    )}
-                    {docs && <pre className="docs-out">{docs}</pre>}
-                    <button className="btn btn-ghost subagent-btn" onClick={analyzeDeps} disabled={depsBusy} style={{ marginTop: "0.8rem" }}>
-                      {depsBusy ? "Dependency Agent working…" : "📦 Analyze dependencies ($0.02)"}
-                    </button>
-                    {depsTx && (
-                      <div className="w-ok">
-                        <span>✓ repo agent paid Dependency Agent $0.02</span>
-                        <a href={`https://testnet.arcscan.app/tx/${depsTx}`} target="_blank" rel="noopener noreferrer" className="w-tx">{depsTx.slice(0, 10)}…{depsTx.slice(-8)}</a>
-                      </div>
-                    )}
-                    {deps && <pre className="docs-out">{deps}</pre>}
+                    ))}
                   </div>
-                  <a className="btn btn-ghost" href={`/creator/${dash.handle}`}>View public page →</a>
+
+                  <button className="btn btn-ghost" style={{ marginTop: "1.4rem", width: "100%" }} onClick={() => { setDash(null); setReturnKey(""); }}>+ Connect another repo</button>
                 </div>
               </motion.div>
             )}
+            
           </AnimatePresence>
         </div>
       </section>
@@ -286,6 +243,13 @@ body { margin: 0; background: #FBF7F0; }
 .de-num { font-family: ui-monospace, monospace; font-size: 2rem; font-weight: 700; color: var(--gold); }
 .de-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8073; }
 .withdraw-box { margin-bottom: 1.4rem; }
+.repo-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.repo-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; flex-wrap: wrap; }
+.repo-row-name { font-family: ui-monospace, monospace; font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+.repo-row-sub { font-size: 0.76rem; color: #8a8073; margin-top: 0.2rem; }
+.repo-row-actions { display: flex; gap: 0.5rem; }
+.repo-link-btn { font-size: 0.8rem; font-weight: 600; padding: 0.4rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--ink); background: var(--paper); }
+.repo-link-btn:hover { border-color: var(--gold); }
 .subagent-box { margin: 1.4rem 0; padding-top: 1.4rem; border-top: 1px solid var(--line); }
 .subagent-desc { font-size: 0.85rem; color: #8a8073; line-height: 1.5; margin: 0 0 1rem; }
 .subagent-btn { width: 100%; }
