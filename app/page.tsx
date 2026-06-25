@@ -75,8 +75,8 @@ const [devs, setDevs] = useState<Dev[]>([]);
           initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
           <div className="grid-head">
             <div>
-             <div className="eyebrow">live repo agents</div>
-              <h3 className="grid-title">Repo agents earning right now.</h3>
+             <div className="eyebrow">the community</div>
+              <h3 className="grid-title">Maintainers earning on Empeiria.</h3>
             </div>
             <div className="grid-stat">
               <span className="gs-num">${totalEarned.toFixed(4)}</span>
