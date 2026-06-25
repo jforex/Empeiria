@@ -3,11 +3,8 @@ import { useState, useEffect } from "react";
 import EconomyMap from "./components/EconomyMap";
 import { motion } from "framer-motion";
 
-type Creator = {
-  handle: string; name: string; agentLabel: string; tagline: string | null;
-  category: string; earned: number; chunks: number; avatarUrl: string | null;
-  isRepo?: boolean; repoFullName?: string | null; repoStars?: number;
-};
+type DevRepo = { handle: string; repoFullName: string; repoStars: number; agentLabel: string; earned: number };
+type Dev = { owner: string; avatar: string | null; repos: DevRepo[] };
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
@@ -18,13 +15,11 @@ const fadeUp = {
 };
 
 export default function Landing() {
-  const [creators, setCreators] = useState<Creator[]>([]);
-
+const [devs, setDevs] = useState<Dev[]>([]);
   useEffect(() => {
-    fetch("/api/creators").then((r) => r.json()).then((d) => { if (d.ok) setCreators(d.creators); }).catch(() => {});
+    fetch("/api/devs").then((r) => r.json()).then((d) => { if (d.ok) setDevs(d.devs); }).catch(() => {});
   }, []);
-
-  const totalEarned = creators.reduce((s, c) => s + c.earned, 0);
+  const totalEarned = devs.reduce((s, dev) => s + dev.repos.reduce((rs, r) => rs + r.earned, 0), 0);
 
   return (
     <div className="pg">
@@ -88,26 +83,30 @@ export default function Landing() {
               <span className="gs-label">paid to maintainers</span>
             </div>
           </div>
-          {creators.length > 0 ? (
-            <div className="cgrid">
-              {creators.map((c, i) => (
-                <motion.a key={c.handle} href={`/creator/${c.handle}`} className="ccard"
+          {devs.length > 0 ? (
+            <div className="dev-grid">
+              {devs.map((dev, i) => (
+                <motion.div key={dev.owner} className="dev-card"
                   initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
-                 <div className="cc-top">
-                    {c.avatarUrl
-                      ? <img src={c.avatarUrl} alt="" className="cc-avatar" />
-                      : <span className="cc-avatar cc-avatar-ph">{c.name.charAt(0).toUpperCase()}</span>}
-                    <div className="cc-cat">{c.category}</div>
+                  <a className="dev-head" href={`https://github.com/${dev.owner}`} target="_blank" rel="noopener noreferrer">
+                    {dev.avatar
+                      ? <img src={dev.avatar} alt="" className="dev-avatar" />
+                      : <span className="dev-avatar dev-avatar-ph">{dev.owner.charAt(0).toUpperCase()}</span>}
+                    <div>
+                      <div className="dev-owner">@{dev.owner}</div>
+                      <div className="dev-count">{dev.repos.length} repo{dev.repos.length === 1 ? "" : "s"} connected</div>
+                    </div>
+                  </a>
+                  <div className="dev-repos">
+                    {dev.repos.map((r) => (
+                      <a key={r.handle} href={`/creator/${r.handle}`} className="dev-repo">
+                        <span className="dev-repo-name">{r.repoFullName.split("/")[1]}{r.repoStars > 0 ? ` · ★ ${r.repoStars}` : ""}</span>
+                        <span className="dev-repo-earned">${r.earned.toFixed(4)}</span>
+                      </a>
+                    ))}
                   </div>
-                 <div className="cc-agent">{c.agentLabel}</div>
-                  <div className="cc-by">{c.repoFullName ? c.repoFullName : c.name}{typeof c.repoStars === "number" && c.repoStars > 0 ? ` · ★ ${c.repoStars}` : ""}</div>
-                  {c.tagline && <div className="cc-tag">{c.tagline}</div>}
-                  <div className="cc-foot">
-                    <span className="cc-earned">${c.earned.toFixed(4)} earned</span>
-                    <span className="cc-chunks">{c.chunks} chunk{c.chunks === 1 ? "" : "s"}</span>
-                  </div>
-                </motion.a>
+                </motion.div>
               ))}
             </div>
           ) : (
@@ -246,7 +245,19 @@ line-height: 1.08; font-weight: 500; margin: 0 0 1.5rem; letter-spacing: -0.02em
 .gs-num { font-family: ui-monospace, monospace; font-size: 1.5rem; font-weight: 700; color: var(--gold); }
 .gs-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a8073; }
 .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
-.ccard { display: flex; flex-direction: column; gap: 0.4rem; padding: 1.4rem; background: #fff; border: 1px solid var(--line); border-radius: 14px; text-decoration: none; color: var(--ink); transition: transform 0.14s, box-shadow 0.14s; }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.dev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+.dev-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem; }
+.dev-head { display: flex; align-items: center; gap: 0.8rem; text-decoration: none; margin-bottom: 1rem; }
+.dev-avatar { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
+.dev-avatar-ph { display: flex; align-items: center; justify-content: center; background: var(--ink); color: var(--paper); font-family: Newsreader, Georgia, serif; font-size: 1.3rem; font-weight: 500; }
+.dev-owner { font-size: 1.05rem; font-weight: 700; color: var(--ink); }
+.dev-count { font-size: 0.78rem; color: #8a7d62; margin-top: 0.1rem; }
+.dev-repos { display: flex; flex-direction: column; gap: 0.4rem; }
+.dev-repo { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; background: var(--paper); transition: border-color 0.15s; }
+.dev-repo:hover { border-color: var(--gold); }
+.dev-repo-name { font-family: ui-monospace, monospace; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.dev-repo-earned { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--gold); font-weight: 700; }
 .ccard:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(26,26,46,0.08); border-color: var(--gold); }
 .cc-top { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.2rem; }
 .cc-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
