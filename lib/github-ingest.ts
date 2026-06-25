@@ -20,6 +20,31 @@ function ghHeaders() {
   };
 }
 
+const WEBHOOK_URL = (process.env.WEBHOOK_BASE_URL || "https://empeiria.vercel.app") + "/api/webhooks/github";
+
+/** Try to register a push webhook on the repo. Returns the hook id, or null if it fails (e.g. no permission). */
+export async function registerWebhook(owner: string, name: string): Promise<{ id: number | null; error?: string }> {
+  try {
+    const res = await fetch(`${GH}/repos/${owner}/${name}/hooks`, {
+      method: "POST",
+      headers: { ...ghHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "web", active: true, events: ["push"],
+        config: { url: WEBHOOK_URL, content_type: "json", secret: process.env.GITHUB_WEBHOOK_SECRET, insecure_ssl: "0" },
+      }),
+    });
+    if (res.status === 201) {
+      const hook = await res.json();
+      return { id: hook.id };
+    }
+    const err = await res.json().catch(() => ({}));
+    return { id: null, error: `${res.status} ${err.message ?? ""}`.trim() };
+  } catch (e) {
+    return { id: null, error: (e as Error).message };
+  }
+}
+
+
 // which files are worth ingesting
 const INGEST_EXT = new Set([
   ".md", ".mdx", ".txt", ".rst",                         // docs

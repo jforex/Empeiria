@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { parseRepo, fetchRepoMeta, ingestRepo } from "@/lib/github-ingest";
+import { parseRepo, fetchRepoMeta, ingestRepo, registerWebhook } from "@/lib/github-ingest";
 
 const db = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -76,10 +76,29 @@ export async function POST(req: NextRequest) {
     }
 
     // ingest the repo files
-    const result = await ingestRepo(creatorId, parsed.owner, parsed.name, meta.defaultBranch);
+  const result = await ingestRepo(creatorId, parsed.owner, parsed.name, meta.defaultBranch);
+
+    // try to auto-register a push webhook so the repo stays in sync
+    let autoSync = false;
+    let webhookError: string | null = null;
+    const { data: cur } = await db.from("creators").select("webhook_id").eq("id", creatorId).maybeSingle();
+    if (cur?.webhook_id) {
+      autoSync = true; // already has a webhook
+    } else {
+      const hook = await registerWebhook(parsed.owner, parsed.name);
+      if (hook.id) {
+        autoSync = true;
+        await db.from("creators").update({ webhook_id: hook.id, auto_sync: true }).eq("id", creatorId);
+      } else {
+        webhookError = hook.error ?? "could not register webhook";
+      }
+    }
+    await db.from("creators").update({ last_synced_at: new Date().toISOString() }).eq("id", creatorId);
 
     return NextResponse.json({
       ok: true,
+      autoSync,
+      webhookError,
       handle, accessKey,
       accountKey: devAccount.account_key,
       owner: parsed.owner,
