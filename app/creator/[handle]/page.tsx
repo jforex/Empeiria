@@ -18,6 +18,33 @@ export default function CreatorProfile() {
   }, []);
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [docs, setDocs] = useState<string | null>(null);
+  const [docsTx, setDocsTx] = useState<string | null>(null);
+  const [docsBusy, setDocsBusy] = useState(false);
+  const [deps, setDeps] = useState<string | null>(null);
+  const [depsTx, setDepsTx] = useState<string | null>(null);
+  const [depsBusy, setDepsBusy] = useState(false);
+  const [agentErr, setAgentErr] = useState<string | null>(null);
+  async function runDocs() {
+    setDocsBusy(true); setAgentErr(null); setDocs(null); setDocsTx(null);
+    try {
+      const res = await fetch("/api/agents/docs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handle }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "documentation failed");
+      setDocs(d.docs); setDocsTx(d.paid?.tx ?? null);
+    } catch (e) { setAgentErr((e as Error).message); }
+    finally { setDocsBusy(false); }
+  }
+  async function runDeps() {
+    setDepsBusy(true); setAgentErr(null); setDeps(null); setDepsTx(null);
+    try {
+      const res = await fetch("/api/agents/deps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handle }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "dependency analysis failed");
+      setDeps(d.report); setDepsTx(d.paid?.tx ?? null);
+    } catch (e) { setAgentErr((e as Error).message); }
+    finally { setDepsBusy(false); }
+  }
   const [loading, setLoading] = useState(true);
 
 useEffect(() => {
@@ -70,6 +97,20 @@ useEffect(() => {
                 </div>
 
                 <a className="btn btn-solid ask-cta" href={`/marketplace`}>Ask this agent → <span className="ask-handle">@{data.creator.handle}</span></a>
+                {data.creator.isRepo && (
+                  <div className="agent-svc">
+                    <div className="sources-head">agent services — the repo agent pays specialists on-chain</div>
+                    <div className="agent-btns">
+                      <button className="btn btn-ghost agent-btn" onClick={runDocs} disabled={docsBusy}>{docsBusy ? "Docs Agent working…" : "🤖 Generate docs ($0.02)"}</button>
+                      <button className="btn btn-ghost agent-btn" onClick={runDeps} disabled={depsBusy}>{depsBusy ? "Dependency Agent working…" : "📦 Analyze deps ($0.02)"}</button>
+                    </div>
+                    {agentErr && <div className="err" style={{ marginTop: "0.6rem" }}>{agentErr}</div>}
+                    {docsTx && <div className="agent-paid">✓ paid Documentation Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${docsTx}`} target="_blank" rel="noopener noreferrer">{docsTx.slice(0,10)}…</a></div>}
+                    {docs && <pre className="agent-out">{docs}</pre>}
+                    {depsTx && <div className="agent-paid">✓ paid Dependency Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${depsTx}`} target="_blank" rel="noopener noreferrer">{depsTx.slice(0,10)}…</a></div>}
+                    {deps && <pre className="agent-out">{deps}</pre>}
+                  </div>
+                )}
               </motion.div>
 
               {data.knowledge.content.length > 0 && (
@@ -125,6 +166,12 @@ body { margin: 0; background: #FBF7F0; }
 .btn:hover { transform: translateY(-2px); }
 .btn-solid { background: var(--ink); color: var(--paper); }
 .ask-cta { width: 100%; justify-content: center; }
+.agent-svc { margin-top: 1.6rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+.agent-btns { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.8rem; }
+.agent-btn { flex: 1; min-width: 160px; }
+.agent-paid { font-family: ui-monospace, monospace; font-size: 0.8rem; color: #3f8c5f; margin-top: 0.8rem; }
+.agent-paid a { color: var(--violet); }
+.agent-out { margin-top: 0.8rem; padding: 1rem; background: #fff; border: 1px solid var(--line); border-radius: 10px; font-family: ui-monospace, monospace; font-size: 0.76rem; line-height: 1.5; white-space: pre-wrap; max-height: 300px; overflow-y: auto; color: var(--ink); }
 .ask-handle { font-family: ui-monospace, monospace; opacity: 0.7; font-size: 0.9rem; }
 .sources { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 1.5rem; }
 .sources-head { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #8a7d62; font-weight: 600; margin-bottom: 1rem; }
