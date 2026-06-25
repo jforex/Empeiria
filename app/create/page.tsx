@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Connected = {
@@ -17,7 +17,17 @@ export default function Connect() {
   // returning maintainer
   const [returnKey, setReturnKey] = useState("");
   type AcctRepo = { handle: string; repoFullName: string | null; repoUrl: string | null; repoStars: number; agentLabel: string; earned: number };
-  const [dash, setDash] = useState<{ owner: string; pooledEarnings: number; repos: AcctRepo[] } | null>(null);
+ const [dash, setDash] = useState<{ owner: string; pooledEarnings: number; repos: AcctRepo[]; avatar?: string } | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  useEffect(() => {
+    fetch("/api/auth/me").then((r) => r.json()).then((d) => {
+      if (d.authed) setDash({ owner: d.owner, pooledEarnings: d.pooledEarnings ?? 0, repos: d.repos ?? [], avatar: d.avatar });
+    }).catch(() => {}).finally(() => setAuthChecked(true));
+  }, []);
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setDash(null);
+  }
   const [wDest, setWDest] = useState("");
   const [wAmount, setWAmount] = useState("");
   const [wResult, setWResult] = useState<string | null>(null);
@@ -101,11 +111,20 @@ async function withdraw() {
                   <button className="btn btn-solid" onClick={connect} disabled={busy || !repo.trim()}>
                     {busy ? "Reading your repo… (this can take a minute)" : "Connect repository →"}
                   </button>
-                  <div className="return-row">
-                    <span className="return-label">Already connected?</span>
-                   <input className="return-input" placeholder="Paste account key (EMP-XXXX-XXXX)" value={returnKey} onChange={(e) => setReturnKey(e.target.value)} />
-                    <button className="return-btn" onClick={loadDash} disabled={busy || returnKey.trim().length < 4}>Open →</button>
+                 <div className="oauth-row">
+                    <a className="gh-btn" href="/api/auth/github">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                      Sign in with GitHub
+                    </a>
+                    <span className="oauth-hint">to manage all your repos in one place</span>
                   </div>
+                  <details className="return-fallback">
+                    <summary>Have an account key instead?</summary>
+                    <div className="return-row">
+                      <input className="return-input" placeholder="Paste account key (EMP-XXXX-XXXX)" value={returnKey} onChange={(e) => setReturnKey(e.target.value)} />
+                      <button className="return-btn" onClick={loadDash} disabled={busy || returnKey.trim().length < 4}>Open →</button>
+                    </div>
+                  </details>
                 </div>
               </motion.div>
             )}
@@ -137,7 +156,11 @@ async function withdraw() {
               <motion.div key="dash" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <span className="lit-border lit-gold" aria-hidden />
                 <div className="card-in">
-                  <div className="eyebrow">your repos · @{dash.owner}</div>
+                 <div className="dash-id-row">
+                    {dash.avatar && <img src={dash.avatar} alt="" className="dash-avatar-img" />}
+                    <div className="eyebrow" style={{ margin: 0 }}>your repos · @{dash.owner}</div>
+                    <button className="logout-btn" onClick={logout}>Sign out</button>
+                  </div>
                   <div className="dash-earned">
                     <span className="de-num">${dash.pooledEarnings.toFixed(4)}</span>
                     <span className="de-label">pooled earnings · available to withdraw</span>
@@ -227,6 +250,16 @@ body { margin: 0; background: #FBF7F0; }
 .return-input { flex: 1; min-width: 180px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-family: ui-monospace, monospace; font-size: 0.82rem; padding: 0.5rem 0.7rem; outline: none; color: var(--ink); }
 .return-input:focus { border-color: var(--gold); }
 .return-btn { padding: 0.5rem 1rem; border-radius: 8px; border: 1.5px solid var(--ink); background: transparent; font-weight: 600; font-size: 0.85rem; cursor: pointer; color: var(--ink); }
+.oauth-row { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.6rem; padding-top: 1.6rem; border-top: 1px solid var(--line); }
+.gh-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; background: var(--ink); color: var(--paper); padding: 0.85rem 1.4rem; border-radius: 10px; font-weight: 600; font-size: 0.95rem; text-decoration: none; transition: transform 0.12s; }
+.gh-btn:hover { transform: translateY(-2px); }
+.oauth-hint { font-size: 0.8rem; color: #8a7d62; text-align: center; }
+.return-fallback { margin-top: 1rem; font-size: 0.82rem; color: #8a7d62; }
+.return-fallback summary { cursor: pointer; }
+.return-fallback .return-row { margin-top: 0.7rem; display: flex; gap: 0.5rem; border: none; padding: 0; }
+.dash-id-row { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.5rem; }
+.dash-avatar-img { width: 36px; height: 36px; border-radius: 50%; }
+.logout-btn { margin-left: auto; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 0.35rem 0.7rem; font-size: 0.78rem; color: #8a7d62; cursor: pointer; }
 .return-btn:disabled { opacity: 0.4; cursor: default; }
 .live-in { text-align: center; }
 .live-in h2 { font-family: Newsreader, Georgia, serif; font-size: 2rem; font-weight: 500; margin: 0 0 0.4rem; }
