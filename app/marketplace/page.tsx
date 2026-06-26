@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import EconomyMap from "../components/EconomyMap";
+import ReactMarkdown from "react-markdown";
 
 type Tier = "simple" | "detailed" | "analysis";
 const TIERS: { id: Tier; label: string; price: number; desc: string }[] = [
@@ -138,7 +139,7 @@ function reset() {
               {answer && (
                 <motion.div className="answer-live" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                   <div className="answer-label">the answer</div>
-                  <p>{answer}</p>
+                  <div className="answer-md"><ReactMarkdown>{answer}</ReactMarkdown></div>
                 </motion.div>
               )}
             </div>
@@ -148,7 +149,7 @@ function reset() {
             <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
               <div className="answer-final">
                 <div className="answer-label">the answer</div>
-                <p>{done.answer || "No creator has shared knowledge on this yet — be the first to contribute."}</p>
+                <div className="answer-md"><ReactMarkdown>{done.answer || "No repo has knowledge on this yet — be the first to connect one."}</ReactMarkdown></div>
               </div>
               {done.paid.length > 0 && (
                 <div className="payout">
@@ -239,6 +240,19 @@ body { margin: 0; background: #FBF7F0; }
 .fpay-meta { font-family: ui-monospace, monospace; font-size: 0.76rem; color: #6e561f; margin-top: 0.2rem; }
 .answer-live, .answer-final { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; margin: 1.2rem 0; }
 .answer-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.14em; color: #8a7d62; font-weight: 600; margin-bottom: 0.8rem; }
+.answer-md { color: var(--ink); line-height: 1.65; font-size: 0.97rem; }
+.answer-md p { margin: 0 0 0.9rem; }
+.answer-md p:last-child { margin-bottom: 0; }
+.answer-md h1, .answer-md h2, .answer-md h3 { font-family: Newsreader, Georgia, serif; font-weight: 600; margin: 1.3rem 0 0.6rem; line-height: 1.25; }
+.answer-md h1 { font-size: 1.4rem; } .answer-md h2 { font-size: 1.2rem; } .answer-md h3 { font-size: 1.05rem; }
+.answer-md ul, .answer-md ol { margin: 0.6rem 0 1rem; padding-left: 1.5rem; }
+.answer-md li { margin: 0.35rem 0; padding-left: 0.2rem; }
+.answer-md code { background: #f3efe6; padding: 0.12rem 0.4rem; border-radius: 5px; font-family: ui-monospace, "SF Mono", monospace; font-size: 0.86em; color: #8a4b2f; }
+.answer-md pre { background: #1a1a2e; color: #e8e6f0; padding: 1rem; border-radius: 10px; overflow-x: auto; margin: 0.9rem 0; }
+.answer-md pre code { background: none; color: inherit; padding: 0; }
+.answer-md strong { font-weight: 700; color: var(--ink); }
+.answer-md a { color: var(--gold); text-decoration: underline; }
+.answer-md blockquote { border-left: 3px solid var(--line); padding-left: 1rem; margin: 0.9rem 0; color: #6a6256; }
 .answer-live p, .answer-final p { font-family: Newsreader, Georgia, serif; font-size: 1.18rem; line-height: 1.6; margin: 0; color: var(--ink); }
 .payout { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 1.4rem; margin-bottom: 1.5rem; }
 .payout-head { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #8a7d62; font-weight: 600; margin-bottom: 1rem; }
