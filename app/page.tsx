@@ -35,16 +35,16 @@ const [devs, setDevs] = useState<Dev[]>([]);
           </nav>
         </header>
         <div className="hero-body">
-        <motion.div className="hero-eyebrow" initial="hidden" animate="show" custom={0} variants={fadeUp}>
-            Open source, finally paid · maintainers earn in USDC on Arc via x402
+       <motion.div className="hero-eyebrow" initial="hidden" animate="show" custom={0} variants={fadeUp}>
+            for the people who maintain open source
           </motion.div>
-          <motion.h1 initial="hidden" animate="show" custom={0} variants={fadeUp}>
-            Turn your repository<br />into an AI teammate.
+         <motion.h1 initial="hidden" animate="show" custom={0} variants={fadeUp}>
+            You answer the same questions<br />about your code. For free. Forever.
           </motion.h1>
-          <motion.p className="lede" initial="hidden" animate="show" custom={1} variants={fadeUp}>
-            Connect any GitHub repo and it becomes an agent that answers questions
-            about the codebase — architecture, onboarding, implementation. Developers
-            pay per answer; the maintainer earns every time their repo helps someone.
+        <motion.p className="lede" initial="hidden" animate="show" custom={1} variants={fadeUp}>
+            Empeiria turns your GitHub repo into an agent that answers them for you —
+            from your actual code — and pays you in USDC every time it helps a developer.
+            Your knowledge finally earns.
           </motion.p>
           <motion.div className="doors" initial="hidden" animate="show" custom={2} variants={fadeUp}>
             <div className="door lit">
@@ -119,7 +119,7 @@ const [devs, setDevs] = useState<Dev[]>([]);
         <motion.div className="inner"
           initial="hidden" whileInView="show" viewport={{ once: true, margin: "-80px" }} variants={fadeUp}>
          <div className="eyebrow">how it works — a repo becomes a paid teammate</div>
-          <p className="how-lede">Maintainers own their code; developers rent its knowledge, one answer at a time. Agents retrieve from the real repo, synthesize, and settle payments in USDC on Arc via x402 micropayments — every step a real on-chain decision.</p>
+          <p className="how-lede">Maintainers own their code; developers get instant answers, one at a time. Every answer pays the maintainer automatically — settled in USDC the moment it's delivered. No subscriptions, no middleman taking a cut of their expertise.</p>
           <div className="how-grid">
           <div className="how-card"><div className="how-num">01</div><div className="how-title">Connect a repo</div><p>Paste a GitHub URL. Empeiria ingests the docs and source, chunks and embeds them into an agent that knows the codebase.</p></div>
             <div className="how-card"><div className="how-num">02</div><div className="how-title">You ask, with a budget</div><p>Pick a tier — simple, detailed, or analysis. That price is held and spent down as creators' knowledge is used to answer you.</p></div>
@@ -134,7 +134,7 @@ const [devs, setDevs] = useState<Dev[]>([]);
       <section className="band">
         <div className="inner">
           <div className="how-map-label eyebrow">the whole economy, live</div>
-         <EconomyMap activeNodes={new Set(["asker","escrow","specialist","pool","contributor","con","fees","transcription"])} pulses={[]} />
+        <EconomyMap activeNodes={new Set(["asker","escrow","specialist","pool","contributor","con","fees","transcription","testing"])} pulses={[]} />
         </div>
       </section>
 

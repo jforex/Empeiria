@@ -18,13 +18,13 @@ const NODES: Record<string, { x: number; y: number; label: string; role: string;
   escrow:       { x: 380, y: 110, label: "Escrow",        role: "holds budget",    emoji: "🔒" },
   specialist:   { x: 620, y: 110, label: "Repo Agent",    role: "answers from code", emoji: "📦" },
   pool:         { x: 860, y: 110, label: "Repo Knowledge", role: "ingested files",  emoji: "📚" },
-  // payout — the maintainer earns
-  contributor:  { x: 620, y: 280, label: "Maintainer",    role: "paid per use",    emoji: "✍️" },
-  // platform fee
-  fees:         { x: 380, y: 280, label: "Fees",          role: "platform 10%",    emoji: "🏛️" },
-  // agent economy — the repo agent pays specialist agents
-  con:          { x: 620, y: 450, label: "Docs Agent",    role: "paid by repo",    emoji: "🤖" },
-  transcription:{ x: 860, y: 450, label: "Dependency Agent", role: "paid by repo",  emoji: "🧩" },
+ // payout band — Escrow pays the maintainer + platform fee (left side, clear of center)
+  fees:         { x: 240, y: 290, label: "Fees",          role: "platform 10%",    emoji: "🏛️" },
+  contributor:  { x: 420, y: 290, label: "Maintainer",    role: "paid per use",    emoji: "✍️" },
+  // agent economy band — the Repo Agent pays specialist agents (centered under it)
+  con:          { x: 500, y: 460, label: "Docs Agent",       role: "paid by repo", emoji: "🤖" },
+  transcription:{ x: 700, y: 460, label: "Dependency Agent", role: "paid by repo", emoji: "🧩" },
+  testing:      { x: 900, y: 460, label: "Testing Agent",    role: "paid by repo", emoji: "🧪" },
 };
 const EDGES: Array<{ from: string; to: string }> = [
   // ask flow
@@ -34,9 +34,10 @@ const EDGES: Array<{ from: string; to: string }> = [
   // payout + fee
   { from: "escrow", to: "contributor" },
   { from: "escrow", to: "fees" },
-  // agent economy — repo agent pays specialist agents
+ // agent economy — repo agent pays specialist agents
   { from: "specialist", to: "con" },
   { from: "specialist", to: "transcription" },
+  { from: "specialist", to: "testing" },
 ];
 function edgePath(from: string, to: string): string {
   const a = NODES[from], b = NODES[to];
