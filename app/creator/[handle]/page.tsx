@@ -24,7 +24,11 @@ export default function CreatorProfile() {
   const [deps, setDeps] = useState<string | null>(null);
   const [depsTx, setDepsTx] = useState<string | null>(null);
   const [depsBusy, setDepsBusy] = useState(false);
+  const [tests, setTests] = useState<string | null>(null);
+  const [testsTx, setTestsTx] = useState<string | null>(null);
+  const [testsBusy, setTestsBusy] = useState(false);
   const [agentErr, setAgentErr] = useState<string | null>(null);
+
   async function runDocs() {
     setDocsBusy(true); setAgentErr(null); setDocs(null); setDocsTx(null);
     try {
@@ -35,7 +39,7 @@ export default function CreatorProfile() {
     } catch (e) { setAgentErr((e as Error).message); }
     finally { setDocsBusy(false); }
   }
-  async function runDeps() {
+async function runDeps() {
     setDepsBusy(true); setAgentErr(null); setDeps(null); setDepsTx(null);
     try {
       const res = await fetch("/api/agents/deps", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handle }) });
@@ -44,6 +48,16 @@ export default function CreatorProfile() {
       setDeps(d.report); setDepsTx(d.paid?.tx ?? null);
     } catch (e) { setAgentErr((e as Error).message); }
     finally { setDepsBusy(false); }
+  }
+  async function runTests() {
+    setTestsBusy(true); setAgentErr(null); setTests(null); setTestsTx(null);
+    try {
+      const res = await fetch("/api/agents/tests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ handle }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "testing analysis failed");
+      setTests(d.report); setTestsTx(d.paid?.tx ?? null);
+    } catch (e) { setAgentErr((e as Error).message); }
+    finally { setTestsBusy(false); }
   }
   const [loading, setLoading] = useState(true);
 
@@ -103,12 +117,15 @@ useEffect(() => {
                     <div className="agent-btns">
                       <button className="btn btn-ghost agent-btn" onClick={runDocs} disabled={docsBusy}>{docsBusy ? "Docs Agent working…" : "🤖 Generate docs ($0.02)"}</button>
                       <button className="btn btn-ghost agent-btn" onClick={runDeps} disabled={depsBusy}>{depsBusy ? "Dependency Agent working…" : "📦 Analyze deps ($0.02)"}</button>
+                      <button className="btn btn-ghost agent-btn" onClick={runTests} disabled={testsBusy}>{testsBusy ? "Testing Agent working…" : "🧪 Suggest tests ($0.02)"}</button>
                     </div>
                     {agentErr && <div className="err" style={{ marginTop: "0.6rem" }}>{agentErr}</div>}
                     {docsTx && <div className="agent-paid">✓ paid Documentation Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${docsTx}`} target="_blank" rel="noopener noreferrer">{docsTx.slice(0,10)}…</a></div>}
                     {docs && <pre className="agent-out">{docs}</pre>}
                     {depsTx && <div className="agent-paid">✓ paid Dependency Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${depsTx}`} target="_blank" rel="noopener noreferrer">{depsTx.slice(0,10)}…</a></div>}
                     {deps && <pre className="agent-out">{deps}</pre>}
+                    {testsTx && <div className="agent-paid">✓ paid Testing Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${testsTx}`} target="_blank" rel="noopener noreferrer">{testsTx.slice(0,10)}…</a></div>}
+                    {tests && <pre className="agent-out">{tests}</pre>}
                   </div>
                 )}
               </motion.div>
