@@ -113,7 +113,8 @@ async function fetchTree(owner: string, name: string, branch: string): Promise<s
 }
 
 /** Fetch a single file's text content. */
-async function fetchFile(owner: string, name: string, path: string, branch: string): Promise<string> {
+/** Fetch a single file's text content. */
+export async function fetchFile(owner: string, name: string, path: string, branch: string): Promise<string> {
   const res = await fetch(`${GH}/repos/${owner}/${name}/contents/${encodeURIComponent(path)}?ref=${branch}`, { headers: ghHeaders() });
   if (!res.ok) return "";
   const data = await res.json();
