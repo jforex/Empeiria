@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
 
 interface Dash {
 creator: { handle: string; name: string; agentLabel: string; tagline: string | null; category: string; bio: string | null; totalEarned: number; joinedAt: string; avatarUrl: string | null; isRepo: boolean; repoFullName: string | null; repoUrl: string | null; repoStars: number };
@@ -121,11 +122,11 @@ useEffect(() => {
                     </div>
                     {agentErr && <div className="err" style={{ marginTop: "0.6rem" }}>{agentErr}</div>}
                     {docsTx && <div className="agent-paid">✓ paid Documentation Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${docsTx}`} target="_blank" rel="noopener noreferrer">{docsTx.slice(0,10)}…</a></div>}
-                    {docs && <pre className="agent-out">{docs}</pre>}
+                    {docs && <div className="agent-out answer-md"><ReactMarkdown>{docs}</ReactMarkdown></div>}
                     {depsTx && <div className="agent-paid">✓ paid Dependency Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${depsTx}`} target="_blank" rel="noopener noreferrer">{depsTx.slice(0,10)}…</a></div>}
-                    {deps && <pre className="agent-out">{deps}</pre>}
+                    {deps && <div className="agent-out answer-md"><ReactMarkdown>{deps}</ReactMarkdown></div>}
                     {testsTx && <div className="agent-paid">✓ paid Testing Agent $0.02 · <a href={`https://testnet.arcscan.app/tx/${testsTx}`} target="_blank" rel="noopener noreferrer">{testsTx.slice(0,10)}…</a></div>}
-                    {tests && <pre className="agent-out">{tests}</pre>}
+                    {tests && <div className="agent-out answer-md"><ReactMarkdown>{tests}</ReactMarkdown></div>}
                   </div>
                 )}
               </motion.div>
