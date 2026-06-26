@@ -34,13 +34,15 @@ Empeiria turns a repository into an agent that handles those questions *and* pay
 
 ## How it works
 
-**Connect a repo.** Paste a GitHub URL. Empeiria pulls the repo's docs and source via the GitHub API, chunks and embeds them (each chunk tagged with its file path), and stands up an agent that knows the codebase. Re-connect any time to re-sync.
+**Connect a repo.** Paste a GitHub URL. Empeiria pulls the repo's docs and source via the GitHub API, chunks and embeds them (each chunk tagged with its file path), and stands up an agent that knows the codebase. It also auto-registers a GitHub webhook so the agent **re-syncs automatically on every push** — your teammate is never out of date.
 
 **Ask it anything.** Tag `@owner-repo` to ask a specific repo, or — from the CLI inside a git project — just ask and it targets the current repo automatically. The agent retrieves the most relevant files, synthesizes an answer, and cites where in the repo it came from.
 
 **The maintainer earns.** Each answer settles a micropayment in USDC on Arc to the repo's wallet. Tiered pricing — simple ($0.01), detailed ($0.03), analysis ($0.05) — with a 10% platform fee. Empty or failed answers are never charged: the asker is refunded in full.
 
 **Withdraw on-chain.** Maintainers withdraw their balance to their own wallet as a real USDC transfer, verifiable on the Arc explorer.
+
+**One identity, all your repos.** Sign in with GitHub — no passwords, no per-repo keys. Every repo you connect is grouped under your GitHub identity, with **pooled earnings** across all of them and a single withdrawal. Your dashboard loads your repos automatically.
 
 ---
 
@@ -49,14 +51,14 @@ Empeiria turns a repository into an agent that handles those questions *and* pay
 A repo agent doesn't just earn — it can **spend** its earnings hiring specialist agents to do deeper work. Each is a real agent-to-agent payment, settled on-chain via x402. Live today:
 
 - **Documentation Agent** — reads the repo's code and generates structured Markdown docs (overview, key modules, setup, API surface). The repo agent pays it $0.02 per run.
-- **Dependency Agent** — analyzes the repo's manifests and reports the stack, key dependencies, and observations. The repo agent pays it $0.02 per run.
+- **Dependency Agent** — fetches the repo's current manifests and queries **npm and PyPI live** to flag dependencies that are a major version behind, reporting declared-vs-latest with real registry data. The repo agent pays it $0.02 per run.
+- **Testing Agent** — reads the repo's source, identifies key exports that appear untested, and generates test scaffolding stubs. The repo agent pays it $0.02 per run.
 
-Every invocation is a genuine USDC transfer between agent wallets, logged and verifiable on the Arc explorer. A maintainer triggers them from their dashboard and watches their repo agent pay another agent in real time.
+Every invocation is a genuine USDC transfer between agent wallets, logged and verifiable on the Arc explorer. Anyone can trigger them from a repo's public page and watch the repo agent pay a specialist agent in real time.
 
 **Roadmap — more specialists, same pattern:**
-- **Testing Agent** — find untested paths and generate test scaffolding.
-- **Security Agent** — surface risky patterns and dependency concerns (with a real CVE source).
-- **Live dependency checks** — query npm/PyPI to flag outdated or vulnerable versions.
+
+- **Security Agent** — surface risky patterns and dependency concerns, grounded in a real CVE/advisory source (not LLM guesses).
 
 The thesis: open knowledge communities become *agent-native economies*, where agents transact with each other to compound value — and the humans who own the underlying work get paid at every step.
 
@@ -89,7 +91,7 @@ MAINTAINER DEVELOPER
 │ USDC on Arc Testnet │
 └────────────────────────────────────────────┘
 
-**Stack:** Next.js 16 (Turbopack) · Supabase + pgvector · GitHub REST API · Gemini embeddings (768-dim) · Groq (Llama 3.3 70B synthesis) · Circle Gateway + x402 on Arc Testnet · viem.
+**Stack:** Next.js 16 (Turbopack) · Supabase + pgvector · GitHub REST API + OAuth + webhooks · Gemini embeddings (768-dim) · Groq (Llama 3.3 70B synthesis) · Circle Gateway + x402 on Arc Testnet · viem · npm + PyPI registries (live dependency checks).
 
 ---
 
@@ -111,10 +113,10 @@ Published as [`empeiria`](https://www.npmjs.com/package/empeiria). Live API by d
 
 ## Surfaces
 
-- `/` — landing + live repo agents
-- `/create` — connect a repo (and returning-maintainer dashboard: earnings + withdraw)
-- `/marketplace` — ask any repo, with the live money-flow map
-- `/creator/[handle]` — a repo agent's public page (GitHub link, stars, files it has read)
+- `/` — landing: the problem, how it works, the live agent economy, and the maintainer community
+- `/create` — sign in with GitHub → your dashboard (all your repos, pooled earnings, withdraw), or connect a new repo
+- `/marketplace` — ask any repo, with a live streaming feed of retrieval + on-chain payment
+- `/creator/[handle]` — a repo agent's public page: GitHub link, stars, files it has read, and the three specialist agents (docs · deps · tests) anyone can trigger
 
 ---
 
@@ -122,5 +124,5 @@ Published as [`empeiria`](https://www.npmjs.com/package/empeiria). Live API by d
 
 - **Testnet.** Settlement is on Arc Testnet with test USDC.
 - **Custodial (for now).** Repo wallets are platform-custodied; earnings are a ledger claim paid out from the treasury on withdrawal — a real on-chain USDC transfer to the maintainer's address. Direct per-payment settlement into each repo's wallet is the natural next step.
-- **Re-sync is manual.** Re-connecting a repo re-ingests it. Auto-sync on push (GitHub webhook) is a planned next step.
-- **Built for the Lepton Agents Hackathon.**
+- **Auto-sync caveat.** A push re-ingests the repo automatically via webhook. The receiver acks GitHub instantly and re-ingests in the background; for large repos the ingest runs past GitHub's 10s delivery window, so a fully queued/worker-backed pipeline is the next refinement.
+
