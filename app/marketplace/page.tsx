@@ -241,12 +241,15 @@ body { margin: 0; background: #FBF7F0; }
 .answer-live, .answer-final { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.5rem; margin: 1.2rem 0; }
 .answer-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.14em; color: #8a7d62; font-weight: 600; margin-bottom: 0.8rem; }
 .answer-md { color: var(--ink); line-height: 1.65; font-size: 0.97rem; }
-.answer-md p { margin: 0 0 0.9rem; }
+.answer-md p { margin: 0 0 1.05rem; }
 .answer-md p:last-child { margin-bottom: 0; }
+.answer-md > *:first-child { margin-top: 0; }
+.answer-md ol + p, .answer-md ul + p { margin-top: 1.05rem; }
 .answer-md h1, .answer-md h2, .answer-md h3 { font-family: Newsreader, Georgia, serif; font-weight: 600; margin: 1.3rem 0 0.6rem; line-height: 1.25; }
 .answer-md h1 { font-size: 1.4rem; } .answer-md h2 { font-size: 1.2rem; } .answer-md h3 { font-size: 1.05rem; }
 .answer-md ul, .answer-md ol { margin: 0.6rem 0 1rem; padding-left: 1.5rem; }
-.answer-md li { margin: 0.35rem 0; padding-left: 0.2rem; }
+.answer-md li { margin: 0.5rem 0; padding-left: 0.2rem; line-height: 1.6; }
+.answer-md li > p { margin: 0 0 0.5rem; }
 .answer-md code { background: #f3efe6; padding: 0.12rem 0.4rem; border-radius: 5px; font-family: ui-monospace, "SF Mono", monospace; font-size: 0.86em; color: #8a4b2f; }
 .answer-md pre { background: #1a1a2e; color: #e8e6f0; padding: 1rem; border-radius: 10px; overflow-x: auto; margin: 0.9rem 0; }
 .answer-md pre code { background: none; color: inherit; padding: 0; }
