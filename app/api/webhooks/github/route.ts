@@ -1,8 +1,9 @@
 /**
  * GitHub webhook receiver — on push, re-ingest the repo (debounced).
- * Verifies the HMAC signature so only real GitHub pushes trigger a sync.
+ * Verifies the HMAC signature, acks GitHub immediately (fast 200),
+ * then re-ingests in the background via after() so GitHub doesn't time out.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import { parseRepo, fetchRepoMeta, ingestRepo } from "@/lib/github-ingest";
@@ -15,6 +16,20 @@ function verify(payload: string, sig: string | null): boolean {
   const hmac = crypto.createHmac("sha256", process.env.GITHUB_WEBHOOK_SECRET || "");
   const digest = "sha256=" + hmac.update(payload).digest("hex");
   try { return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(sig)); } catch { return false; }
+}
+
+async function reingest(repoId: string, fullName: string) {
+  try {
+    const parsed = parseRepo(fullName);
+    if (!parsed) return;
+    const meta = await fetchRepoMeta(parsed.owner, parsed.name);
+    await db.from("creator_chunks").delete().eq("creator_id", repoId);
+    await db.from("creator_content").delete().eq("creator_id", repoId);
+    await ingestRepo(repoId, parsed.owner, parsed.name, meta.defaultBranch);
+    await db.from("creators").update({ last_synced_at: new Date().toISOString(), repo_stars: meta.stars }).eq("id", repoId);
+  } catch (err) {
+    console.error("background re-ingest failed for", fullName, (err as Error).message);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -32,7 +47,7 @@ export async function POST(req: NextRequest) {
     if (!fullName) return NextResponse.json({ error: "no repo in payload" }, { status: 400 });
 
     const { data: repo } = await db.from("creators")
-      .select("id, last_synced_at, repo_branch").eq("repo_full_name", fullName).maybeSingle();
+      .select("id, last_synced_at").eq("repo_full_name", fullName).maybeSingle();
     if (!repo) return NextResponse.json({ ok: true, note: "repo not connected" });
 
     // debounce
@@ -40,17 +55,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, debounced: true });
     }
 
-    const parsed = parseRepo(fullName);
-    if (!parsed) return NextResponse.json({ error: "bad repo name" }, { status: 400 });
-    const meta = await fetchRepoMeta(parsed.owner, parsed.name);
+    // mark sync start immediately (also re-arms the debounce), then re-ingest in the background
+    await db.from("creators").update({ last_synced_at: new Date().toISOString() }).eq("id", repo.id);
+    after(() => reingest(repo.id, fullName));
 
-    // clear old knowledge + re-ingest
-    await db.from("creator_chunks").delete().eq("creator_id", repo.id);
-    await db.from("creator_content").delete().eq("creator_id", repo.id);
-    const result = await ingestRepo(repo.id, parsed.owner, parsed.name, meta.defaultBranch);
-    await db.from("creators").update({ last_synced_at: new Date().toISOString(), repo_stars: meta.stars }).eq("id", repo.id);
-
-    return NextResponse.json({ ok: true, synced: fullName, files: result.filesIngested, chunks: result.chunks });
+    // fast ack so GitHub sees success
+    return NextResponse.json({ ok: true, syncing: fullName });
   } catch (err) {
     return NextResponse.json({ error: "webhook failed", message: (err as Error).message }, { status: 500 });
   }

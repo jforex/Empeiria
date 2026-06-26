@@ -276,6 +276,10 @@ body { margin: 0; background: #FBF7F0; }
 .share-code { font-family: ui-monospace, monospace; font-size: 1.05rem; color: var(--ink); font-weight: 600; }
 .key-box { background: #fdf6e3; border: 1px solid var(--gold); border-radius: 12px; padding: 1.1rem; margin-bottom: 1.6rem; }
 .key-label { font-size: 0.78rem; color: #8a6d1f; margin-bottom: 0.5rem; }
+.sync-box { border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1.6rem; font-size: 0.85rem; line-height: 1.5; }
+.sync-on { background: #ecf8f0; border: 1px solid #3f8c5f; color: #2c6b46; }
+.sync-off { background: #fdf3ec; border: 1px solid #c8895a; color: #8a5a2f; }
+.sync-box code { background: rgba(0,0,0,0.06); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }
 .key-code { font-family: ui-monospace, monospace; font-size: 1.15rem; color: var(--ink); font-weight: 700; letter-spacing: 0.05em; }
 .live-in .row2 { justify-content: center; }
 .agent-banner { font-family: ui-monospace, monospace; font-size: 0.9rem; color: #8a8073; margin-bottom: 1.4rem; }
