@@ -15,7 +15,9 @@ const db = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { repo } = await req.json();
+    const { repo, category } = await req.json();
+    const ALLOWED_CATEGORIES = ["AI", "Web3", "DevTools", "Web", "Data", "Marketing", "Other"];
+    const repoCategory = ALLOWED_CATEGORIES.includes(category) ? category : "Other";
     if (!repo?.trim()) return NextResponse.json({ error: "repo url or owner/name required" }, { status: 400 });
 
     const parsed = parseRepo(repo);
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (existing) {
       creatorId = existing.id; handle = existing.handle; accessKey = existing.access_key;
       // ensure it's linked to the dev account
-      await db.from("creators").update({ owner_account_id: devAccount.id }).eq("id", creatorId);
+     await db.from("creators").update({ owner_account_id: devAccount.id, category: repoCategory }).eq("id", creatorId);
       // clear old chunks so re-ingest is fresh
       await db.from("creator_chunks").delete().eq("creator_id", creatorId);
       await db.from("creator_content").delete().eq("creator_id", creatorId);
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
       if (clash) handle = `${handle}-${rand().toLowerCase()}`;
 
       const { data: created, error } = await db.from("creators").insert({
-        handle, name: meta.fullName, category: "code",
+        handle, name: meta.fullName, category: repoCategory,
         agent_label: `${parsed.name} Agent`,
         agent_tagline: meta.description || `Ask anything about ${meta.fullName}`,
         avatar_url: meta.ownerAvatar,

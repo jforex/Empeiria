@@ -11,6 +11,8 @@ type Connected = {
 
 export default function Connect() {
   const [repo, setRepo] = useState("");
+  const CATEGORIES = ["AI", "Web3", "DevTools", "Web", "Data", "Marketing", "Other"];
+  const [category, setCategory] = useState("Other");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Connected | null>(null);
@@ -47,7 +49,7 @@ export default function Connect() {
     try {
       const res = await fetch("/api/repo/ingest", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo }),
+       body: JSON.stringify({ repo, category }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? data.message ?? "connection failed");
@@ -121,6 +123,12 @@ async function withdraw() {
                   )}
                   <div className="field-label">GitHub repository</div>
                   <input className="f-line" placeholder="github.com/owner/repo" value={repo} onChange={(e) => setRepo(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") connect(); }} />
+                  <div className="field-label">Category</div>
+                  <div className="cat-picker">
+                    {CATEGORIES.map((c) => (
+                      <button key={c} type="button" className={`cat-chip ${category === c ? "cat-chip-on" : ""}`} onClick={() => setCategory(c)}>{c}</button>
+                    ))}
+                  </div>
                   {error && <div className="err">{error}</div>}
                   <button className="btn btn-solid" onClick={connect} disabled={busy || !repo.trim()}>
                     {busy ? "Reading your repo… (this can take a minute)" : "Connect repository →"}
@@ -260,6 +268,10 @@ body { margin: 0; background: #FBF7F0; }
 .f-line { width: 100%; border: none; border-bottom: 1.5px solid var(--line); background: transparent; font-size: 1.05rem; padding: 0.6rem 0; margin-bottom: 1.3rem; outline: none; color: var(--ink); font-family: ui-monospace, monospace; }
 .f-line:focus { border-color: var(--gold); }
 .connecting-as { display: flex; align-items: center; gap: 0.55rem; background: #ecf8f0; border: 1px solid #3f8c5f; color: #2c6b46; border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 1.3rem; font-size: 0.85rem; }
+.cat-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+.cat-chip { padding: 0.4rem 0.9rem; border: 1.5px solid var(--line); border-radius: 999px; background: transparent; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #6a6256; transition: all 0.12s; }
+.cat-chip:hover { border-color: var(--gold); }
+.cat-chip-on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .ca-avatar { width: 24px; height: 24px; border-radius: 50%; }
 .btn { padding: 0.85rem 1.6rem; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; border: none; transition: transform 0.12s; text-decoration: none; display: inline-block; text-align: center; }
 .btn:hover:not(:disabled) { transform: translateY(-2px); }

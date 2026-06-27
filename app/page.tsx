@@ -5,7 +5,7 @@ import AuthBadge from "./components/AuthBadge";
 import EconomyMap from "./components/EconomyMap";
 import { motion } from "framer-motion";
 
-type DevRepo = { handle: string; repoFullName: string; repoStars: number; agentLabel: string; earned: number };
+type DevRepo = { handle: string; repoFullName: string; repoStars: number; agentLabel: string; earned: number; category: string };
 type Dev = { owner: string; avatar: string | null; repos: DevRepo[] };
 
 const fadeUp = {
@@ -18,6 +18,11 @@ const fadeUp = {
 
 export default function Landing() {
 const [devs, setDevs] = useState<Dev[]>([]);
+  const CATEGORIES = ["All", "AI", "Web3", "DevTools", "Web", "Data", "Marketing", "Other"];
+  const [activeCat, setActiveCat] = useState("All");
+  const visibleDevs = activeCat === "All"
+    ? devs
+    : devs.map((d) => ({ ...d, repos: d.repos.filter((r) => r.category === activeCat) })).filter((d) => d.repos.length > 0);
   useEffect(() => {
     fetch("/api/devs").then((r) => r.json()).then((d) => { if (d.ok) setDevs(d.devs); }).catch(() => {});
   }, []);
@@ -80,15 +85,20 @@ const [devs, setDevs] = useState<Dev[]>([]);
             <div>
              <div className="eyebrow">the community</div>
               <h3 className="grid-title">Maintainers earning on Empeiria.</h3>
+              <div className="cat-filter">
+                {CATEGORIES.map((c) => (
+                  <button key={c} type="button" className={`catf-chip ${activeCat === c ? "catf-chip-on" : ""}`} onClick={() => setActiveCat(c)}>{c}</button>
+                ))}
+              </div>
             </div>
             <div className="grid-stat">
               <span className="gs-num">${totalEarned.toFixed(4)}</span>
               <span className="gs-label">paid to maintainers</span>
             </div>
           </div>
-          {devs.length > 0 ? (
+          {visibleDevs.length > 0 ? (
             <div className="dev-grid">
-              {devs.map((dev, i) => (
+              {visibleDevs.map((dev, i) => (
                 <motion.div key={dev.owner} className="dev-card"
                   initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }} transition={{ delay: i * 0.05 }}>
@@ -104,7 +114,7 @@ const [devs, setDevs] = useState<Dev[]>([]);
                   <div className="dev-repos">
                     {dev.repos.map((r) => (
                       <a key={r.handle} href={`/creator/${r.handle}`} className="dev-repo">
-                        <span className="dev-repo-name">{r.repoFullName.split("/")[1]}{r.repoStars > 0 ? ` · ★ ${r.repoStars}` : ""}</span>
+                       <span className="dev-repo-name">{r.repoFullName.split("/")[1]}{r.repoStars > 0 ? ` · ★ ${r.repoStars}` : ""} <span className="dev-repo-cat">{r.category}</span></span>
                         <span className="dev-repo-earned">${r.earned.toFixed(4)}</span>
                       </a>
                     ))}
@@ -250,6 +260,11 @@ line-height: 1.08; font-weight: 500; margin: 0 0 1.5rem; letter-spacing: -0.02em
 .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
 .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
 .dev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.2rem; }
+.cat-filter { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.2rem 0 1.6rem; }
+.catf-chip { padding: 0.35rem 0.85rem; border: 1.5px solid var(--line); border-radius: 999px; background: transparent; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: #6a6256; transition: all 0.12s; }
+.catf-chip:hover { border-color: var(--gold); }
+.catf-chip-on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.dev-repo-cat { font-family: -apple-system, sans-serif; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: #8a7d62; background: #f3efe6; padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.3rem; }
 .dev-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem; }
 .dev-head { display: flex; align-items: center; gap: 0.8rem; text-decoration: none; margin-bottom: 1rem; }
 .dev-avatar { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
