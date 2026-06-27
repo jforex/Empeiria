@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import AuthBadge from "../../components/AuthBadge";
 
 interface Dash {
 creator: { handle: string; name: string; agentLabel: string; tagline: string | null; category: string; bio: string | null; totalEarned: number; joinedAt: string; avatarUrl: string | null; isRepo: boolean; repoFullName: string | null; repoUrl: string | null; repoStars: number };
@@ -76,7 +77,7 @@ useEffect(() => {
       <style>{css}</style>
       <header className="hd">
         <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
-        <nav className="nav"><a href="/marketplace">Ask</a><a href="/create">Create</a></nav>
+        <nav className="nav"><a href="/marketplace">Ask</a><a href="/create">Create</a><AuthBadge /></nav>
       </header>
 
       <section className="band">

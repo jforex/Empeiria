@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import AuthBadge from "../components/AuthBadge";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Connected = {
@@ -18,16 +19,23 @@ export default function Connect() {
   const [returnKey, setReturnKey] = useState("");
   type AcctRepo = { handle: string; repoFullName: string | null; repoUrl: string | null; repoStars: number; agentLabel: string; earned: number };
  const [dash, setDash] = useState<{ owner: string; pooledEarnings: number; repos: AcctRepo[]; avatar?: string } | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  useEffect(() => {
+ const [authChecked, setAuthChecked] = useState(false);
+  const [me, setMe] = useState<{ owner: string; avatar?: string } | null>(null);
+
+ useEffect(() => {
     fetch("/api/auth/me").then((r) => r.json()).then((d) => {
-      if (d.authed) setDash({ owner: d.owner, pooledEarnings: d.pooledEarnings ?? 0, repos: d.repos ?? [], avatar: d.avatar });
+      if (d.authed) {
+        setMe({ owner: d.owner, avatar: d.avatar });
+        setDash({ owner: d.owner, pooledEarnings: d.pooledEarnings ?? 0, repos: d.repos ?? [], avatar: d.avatar });
+      }
     }).catch(() => {}).finally(() => setAuthChecked(true));
   }, []);
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
+    setMe(null);
     setDash(null);
   }
+
   const [wDest, setWDest] = useState("");
   const [wAmount, setWAmount] = useState("");
   const [wResult, setWResult] = useState<string | null>(null);
@@ -87,7 +95,7 @@ async function withdraw() {
       <style>{css}</style>
       <header className="hd">
         <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
-        <nav className="nav"><a href="/marketplace">Ask a repo</a><a href="/create" className="active">Connect a repo</a></nav>
+       <nav className="nav"><a href="/marketplace">Ask a repo</a><a href="/create" className="active">Connect a repo</a><AuthBadge /></nav>
       </header>
 
       <section className="band hero">
@@ -105,6 +113,12 @@ async function withdraw() {
               <motion.div key="connect" className="card lit" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <span className="lit-border lit-gold" aria-hidden />
                 <div className="card-in">
+                  {me && (
+                    <div className="connecting-as">
+                      {me.avatar && <img src={me.avatar} alt="" className="ca-avatar" />}
+                      <span>Connecting as <strong>@{me.owner}</strong> — this repo will join your account</span>
+                    </div>
+                  )}
                   <div className="field-label">GitHub repository</div>
                   <input className="f-line" placeholder="github.com/owner/repo" value={repo} onChange={(e) => setRepo(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") connect(); }} />
                   {error && <div className="err">{error}</div>}
@@ -245,6 +259,8 @@ body { margin: 0; background: #FBF7F0; }
 .field-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #8a7d62; font-weight: 600; margin-bottom: 0.7rem; }
 .f-line { width: 100%; border: none; border-bottom: 1.5px solid var(--line); background: transparent; font-size: 1.05rem; padding: 0.6rem 0; margin-bottom: 1.3rem; outline: none; color: var(--ink); font-family: ui-monospace, monospace; }
 .f-line:focus { border-color: var(--gold); }
+.connecting-as { display: flex; align-items: center; gap: 0.55rem; background: #ecf8f0; border: 1px solid #3f8c5f; color: #2c6b46; border-radius: 10px; padding: 0.7rem 0.9rem; margin-bottom: 1.3rem; font-size: 0.85rem; }
+.ca-avatar { width: 24px; height: 24px; border-radius: 50%; }
 .btn { padding: 0.85rem 1.6rem; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; border: none; transition: transform 0.12s; text-decoration: none; display: inline-block; text-align: center; }
 .btn:hover:not(:disabled) { transform: translateY(-2px); }
 .btn:disabled { opacity: 0.45; cursor: default; }

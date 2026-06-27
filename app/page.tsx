@@ -1,5 +1,7 @@
 "use client";
+
 import { useState, useEffect } from "react";
+import AuthBadge from "./components/AuthBadge";
 import EconomyMap from "./components/EconomyMap";
 import { motion } from "framer-motion";
 
@@ -29,9 +31,10 @@ const [devs, setDevs] = useState<Dev[]>([]);
         <div className="hero-veil" />
         <header className="hd">
           <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
-        <nav className="nav">
+       <nav className="nav">
             <a href="/marketplace">Ask a repo</a>
             <a href="/create">Connect a repo</a>
+            <AuthBadge />
           </nav>
         </header>
         <div className="hero-body">

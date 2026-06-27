@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import EconomyMap from "../components/EconomyMap";
 import ReactMarkdown from "react-markdown";
+import AuthBadge from "../components/AuthBadge";
 
 type Tier = "simple" | "detailed" | "analysis";
 const TIERS: { id: Tier; label: string; price: number; desc: string }[] = [
@@ -78,7 +79,7 @@ function reset() {
       <style>{css}</style>
       <header className="hd">
         <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
-        <nav className="nav"><a href="/marketplace" className="active">Ask</a><a href="/create">Create</a></nav>
+       <nav className="nav"><a href="/marketplace" className="active">Ask</a><a href="/create">Create</a><AuthBadge /></nav>
       </header>
 
       <section className="band hero">
