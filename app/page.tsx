@@ -113,7 +113,7 @@ const [devs, setDevs] = useState<Dev[]>([]);
                   </a>
                   <div className="dev-repos">
                     {dev.repos.map((r) => (
-                      <a key={r.handle} href={`/creator/${r.handle}`} className="dev-repo">
+                      <a key={r.handle} href={`/marketplace?repo=${r.handle}`} className="dev-repo">
                        <span className="dev-repo-name">{r.repoFullName.split("/")[1]}{r.repoStars > 0 ? ` · ★ ${r.repoStars}` : ""} <span className="dev-repo-cat">{r.category}</span></span>
                         <span className="dev-repo-earned">${r.earned.toFixed(4)}</span>
                       </a>

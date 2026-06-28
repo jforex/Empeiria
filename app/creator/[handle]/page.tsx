@@ -112,7 +112,7 @@ useEffect(() => {
                   <div className="stat"><span className="stat-num">{data.knowledge.totalUses}</span><span className="stat-label">times used</span></div>
                 </div>
 
-                <a className="btn btn-solid ask-cta" href={`/marketplace`}>Ask this agent → <span className="ask-handle">@{data.creator.handle}</span></a>
+               <a className="btn btn-solid ask-cta" href={`/marketplace?repo=${data.creator.handle}`}>Ask this agent →</a>
                 {data.creator.isRepo && (
                   <div className="agent-svc">
                     <div className="sources-head">agent services — the repo agent pays specialists on-chain</div>

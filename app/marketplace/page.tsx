@@ -21,7 +21,16 @@ type FeedItem =
   | { kind: "pay"; name: string; agent: string; amount: number; pct: number; tx: string | null };
 
 export default function Marketplace() {
-  const [question, setQuestion] = useState("");
+ const [question, setQuestion] = useState("");
+  const [targetRepo, setTargetRepo] = useState<{ handle: string; name: string } | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const repo = params.get("repo");
+    if (repo) {
+      const name = repo.includes("-") ? repo.split("-").slice(1).join("-") : repo;
+      setTargetRepo({ handle: repo, name });
+    }
+  }, []);
   const [tier, setTier] = useState<Tier>("detailed");
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<"mesh" | "direct" | null>(null);
@@ -54,7 +63,8 @@ function reset() {
     if (!question.trim()) return;
     reset();
     setRunning(true);
-    const url = `/api/creator-ask/stream?q=${encodeURIComponent(question)}&tier=${tier}`;
+   const q = targetRepo && !question.trim().startsWith("@") ? `@${targetRepo.handle} ${question}` : question;
+    const url = `/api/creator-ask/stream?q=${encodeURIComponent(q)}&tier=${tier}`;
     const es = new EventSource(url);
     esRef.current = es;
     es.onmessage = (e) => {
@@ -97,7 +107,13 @@ function reset() {
               <span className="lit-border lit-gold" aria-hidden />
               <div className="ask-in">
               
-               <textarea className="q" rows={3} placeholder="Ask about any repo — or @repo to target one (e.g. @jforex-empeiria how does the x402 payment flow work?)" value={question} onChange={(e) => setQuestion(e.target.value)} disabled={running} />
+              {targetRepo && (
+                 <div className="ask-target">
+                   Asking <strong>{targetRepo.name}</strong>
+                   <button type="button" className="ask-target-x" onClick={() => setTargetRepo(null)} title="Ask any repo instead">×</button>
+                 </div>
+               )}
+               <textarea className="q" rows={3} placeholder={targetRepo ? `Ask ${targetRepo.name} anything about its code…` : "Ask about any repo — or @repo to target one (e.g. @jforex-empeiria how does the x402 payment flow work?)"} value={question} onChange={(e) => setQuestion(e.target.value)} disabled={running} />
                 <div className="tiers">
                   {TIERS.map((t) => (
                     <button key={t.id} className={`tier ${tier === t.id ? "tier-on" : ""}`} onClick={() => setTier(t.id)} disabled={running}>
@@ -270,6 +286,9 @@ body { margin: 0; background: #FBF7F0; }
 .psum { font-family: ui-monospace, monospace; font-size: 0.78rem; color: #8a8073; margin-top: 0.9rem; }
 .ft { background: var(--ink); padding: 2rem clamp(1.5rem,5vw,5rem); }
 .ft-in { display: flex; justify-content: space-between; font-size: 0.82rem; color: #b8b2c2; max-width: 720px; margin: 0 auto; }
+.ask-target { display: inline-flex; align-items: center; gap: 0.5rem; background: #f3efe6; border: 1px solid var(--line); border-radius: 999px; padding: 0.4rem 0.5rem 0.4rem 0.9rem; font-size: 0.85rem; color: var(--ink); margin-bottom: 0.9rem; }
+.ask-target strong { font-weight: 700; }
+.ask-target-x { background: var(--ink); color: var(--paper); border: none; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-size: 0.85rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 @media (max-width: 620px) { .tiers { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .lit-border { animation: none; } }
 `;
