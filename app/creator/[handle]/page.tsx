@@ -77,7 +77,7 @@ useEffect(() => {
       <style>{css}</style>
       <header className="hd">
         <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
-        <nav className="nav"><a href="/marketplace">Ask</a><a href="/create">Create</a><AuthBadge /></nav>
+       <nav className="nav"><a href="/marketplace">Ask</a><a href="/brainstorm">Brainstorm</a><a href="/create">Create</a><AuthBadge /></nav>
       </header>
 
       <section className="band">

@@ -37,7 +37,8 @@ const [devs, setDevs] = useState<Dev[]>([]);
         <header className="hd">
           <a href="/" className="logo"><img src="/empeiria-logo1.png" alt="" className="logo-img" />empeiria</a>
        <nav className="nav">
-            <a href="/marketplace">Ask a repo</a>
+           <a href="/marketplace">Ask a repo</a>
+            <a href="/brainstorm">Brainstorm</a>
             <a href="/create">Connect a repo</a>
             <AuthBadge />
           </nav>
